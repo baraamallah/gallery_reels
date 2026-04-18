@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
-import '../../core/theme.dart';
-import '../../shared/models/swipe_models.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
+import '../../shared/models/swipe_models.dart';
+import '../../core/theme.dart';
+import 'dart:math';
 
 class SwipeCard extends StatefulWidget {
   final AssetEntity asset;
@@ -19,165 +21,208 @@ class SwipeCard extends StatefulWidget {
 }
 
 class _SwipeCardState extends State<SwipeCard> with SingleTickerProviderStateMixin {
-  Offset _offset = Offset.zero;
-  double _rotation = 0;
-  late AnimationController _animationController;
+  late AnimationController _controller;
+  late Animation<Offset> _animation;
+  Offset _dragOffset = Offset.zero;
+  bool _isDragging = false;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _animation = Tween<Offset>(begin: Offset.zero, end: Offset.zero).animate(_controller);
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  void _onPanUpdate(DragUpdateDetails d) {
+  void _onPanStart(DragStartDetails details) {
     setState(() {
-      _offset += d.delta;
-      _rotation = _offset.dx / 300 * 0.4;
+      _isDragging = true;
     });
   }
 
-  void _onPanEnd(DragEndDetails d) {
-    if (_offset.dx > 120) {
-      _swipe(SwipeDirection.right);
-    } else if (_offset.dx < -120) {
-      _swipe(SwipeDirection.left);
-    } else if (_offset.dy < -100) {
-      _swipe(SwipeDirection.up);
-    } else if (_offset.dy > 100) {
-      _swipe(SwipeDirection.down);
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragOffset += details.delta;
+    });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    setState(() {
+      _isDragging = false;
+    });
+
+    final screenSize = MediaQuery.of(context).size;
+    final threshold = screenSize.width * 0.3;
+
+    if (_dragOffset.dx > threshold) {
+      _animateAndSwipe(SwipeDirection.right, Offset(screenSize.width, 0));
+    } else if (_dragOffset.dx < -threshold) {
+      _animateAndSwipe(SwipeDirection.left, Offset(-screenSize.width, 0));
+    } else if (_dragOffset.dy < -threshold) {
+      _animateAndSwipe(SwipeDirection.up, Offset(0, -screenSize.height));
+    } else if (_dragOffset.dy > threshold) {
+      _animateAndSwipe(SwipeDirection.down, Offset(0, screenSize.height));
     } else {
       _resetPosition();
     }
   }
 
-  void _swipe(SwipeDirection direction) {
-    Offset endOffset;
-    switch (direction) {
-      case SwipeDirection.right:
-        endOffset = const Offset(500, 0);
-        break;
-      case SwipeDirection.left:
-        endOffset = const Offset(-500, 0);
-        break;
-      case SwipeDirection.up:
-        endOffset = const Offset(0, -800);
-        break;
-      case SwipeDirection.down:
-        endOffset = const Offset(0, 800);
-        break;
-    }
+  void _animateAndSwipe(SwipeDirection direction, Offset target) {
+    _animation = Tween<Offset>(
+      begin: _dragOffset,
+      end: target,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-    final startOffset = _offset;
-    final animation = Tween<Offset>(begin: startOffset, end: endOffset).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-
-    animation.addListener(() {
-      setState(() {
-        _offset = animation.value;
-      });
-    });
-
-    _animationController.forward(from: 0).then((_) {
+    _controller.forward(from: 0).then((_) {
       widget.onSwiped(direction);
     });
   }
 
   void _resetPosition() {
-    final startOffset = _offset;
-    final startRotation = _rotation;
+    _animation = Tween<Offset>(
+      begin: _dragOffset,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
     
-    final animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
-    );
-
-    animation.addListener(() {
+    _controller.forward(from: 0).then((_) {
       setState(() {
-        _offset = Offset.lerp(startOffset, Offset.zero, animation.value)!;
-        _rotation = lerpDouble(startRotation, 0, animation.value);
+        _dragOffset = Offset.zero;
       });
     });
-
-    _animationController.forward(from: 0);
-  }
-
-  double lerpDouble(num? a, num? b, double t) {
-    if (a == null && b == null) return 0;
-    a ??= 0;
-    b ??= 0;
-    return a + (b - a) * t;
   }
 
   @override
   Widget build(BuildContext context) {
-    final deleteOpacity = (_offset.dx / 120).clamp(0.0, 1.0);
-    final keepOpacity = (-_offset.dx / 120).clamp(0.0, 1.0);
-    final tagOpacity = (-_offset.dy / 100).clamp(0.0, 1.0);
-    final shareOpacity = (_offset.dy / 100).clamp(0.0, 1.0);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final offset = _controller.isAnimating ? _animation.value : _dragOffset;
+        final rotation = offset.dx / MediaQuery.of(context).size.width * (pi / 8);
 
-    return Transform.translate(
-      offset: _offset,
-      child: Transform.rotate(
-        angle: _rotation,
-        child: GestureDetector(
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
-          child: Stack(
-            children: [
-              // Photo
-              ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: SizedBox.expand(
-                  child: AssetEntityImage(
-                    widget.asset,
-                    isOriginal: false,
-                    thumbnailSize: const ThumbnailSize(1000, 1000),
-                    fit: BoxFit.cover,
-                  ),
+        return Transform.translate(
+          offset: offset,
+          child: Transform.rotate(
+            angle: rotation,
+            child: GestureDetector(
+              onPanStart: _onPanStart,
+              onPanUpdate: _onPanUpdate,
+              onPanEnd: _onPanEnd,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AssetEntityImage(
+                      widget.asset,
+                      isOriginal: false,
+                      thumbnailSize: const ThumbnailSize(800, 800),
+                      fit: BoxFit.cover,
+                    ),
+
+                    // Gradient overlay for metadata
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 160,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.8),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Metadata overlay
+                    Positioned(
+                      top: 24,
+                      right: 24,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            color: AppTheme.surfaceVariant.withValues(alpha: 0.4),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 14, color: AppTheme.onSurface),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${widget.asset.createDateTime.month}/${widget.asset.createDateTime.day}/${widget.asset.createDateTime.year}',
+                                  style: AppTheme.labelStyle.copyWith(color: AppTheme.onSurface, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Gesture Indicators (Opacity based on drag)
+                    if (offset.dx > 0)
+                      Positioned(
+                        top: 40,
+                        left: 40,
+                        child: Transform.rotate(
+                          angle: -pi / 12,
+                          child: Opacity(
+                            opacity: (offset.dx / 100).clamp(0.0, 1.0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppTheme.primary, width: 4),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'KEEP',
+                                style: AppTheme.headingStyle.copyWith(color: AppTheme.primary, fontSize: 32),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    if (offset.dx < 0)
+                      Positioned(
+                        top: 40,
+                        right: 40,
+                        child: Transform.rotate(
+                          angle: pi / 12,
+                          child: Opacity(
+                            opacity: (-offset.dx / 100).clamp(0.0, 1.0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppTheme.error, width: 4),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'TRASH',
+                                style: AppTheme.headingStyle.copyWith(color: AppTheme.error, fontSize: 32),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              
-              // Overlays
-              _buildOverlay(AppTheme.deleteColor, Icons.delete, deleteOpacity),
-              _buildOverlay(AppTheme.keepColor, Icons.check_circle, keepOpacity),
-              _buildOverlay(AppTheme.tagColor, Icons.folder, tagOpacity),
-              _buildOverlay(AppTheme.shareColor, Icons.share, shareOpacity),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOverlay(Color color, IconData icon, double opacity) {
-    if (opacity <= 0) return const SizedBox.shrink();
-    return Opacity(
-      opacity: opacity,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 60),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

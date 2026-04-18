@@ -22,12 +22,11 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigateToNext() async {
-    // Longer delay for more "premium" feel (animations need time)
-    await Future.delayed(const Duration(milliseconds: 3500));
+    await Future.delayed(const Duration(milliseconds: 3000));
     if (!mounted) return;
 
     setState(() => _isNavigating = true);
-    await Future.delayed(const Duration(milliseconds: 600)); // Entrance to exit transition
+    await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
 
@@ -62,84 +61,113 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: AppTheme.backgroundGradient,
-        child: Center(
-          child: AnimatedOpacity(
-            opacity: _isNavigating ? 0.0 : 1.0,
-            duration: 600.ms,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Premium Logo Animation
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.accentColor.withValues(alpha: 0.3),
-                            blurRadius: 30,
-                            spreadRadius: 5,
-                          ),
-                        ],
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [AppTheme.accentColor, AppTheme.shareColor],
-                        ),
-                      ),
-                      child: const Icon(Icons.auto_fix_high, size: 60, color: Colors.white),
-                    )
-                    .animate()
-                    .scale(duration: 1.seconds, curve: Curves.elasticOut)
-                    .shimmer(delay: 1200.ms, duration: 2.seconds),
-                    
-                    // Rotating outer ring
-                    SizedBox(
-                      width: 140,
-                      height: 140,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentColor.withValues(alpha: 0.2)),
-                      ),
-                    ).animate(onPlay: (c) => c.repeat()).rotate(duration: 3.seconds),
-                  ],
-                ),
-                
-                const SizedBox(height: 48),
-                
-                Text(
-                  'Gallery Reels',
-                  style: AppTheme.headingStyle.copyWith(fontSize: 40, letterSpacing: 1.2),
-                ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, curve: Curves.easeOutCubic),
-                
-                const SizedBox(height: 12),
-                
-                Text(
-                  'Curating your memories.',
-                  style: AppTheme.bodyStyle.copyWith(color: Colors.white60, letterSpacing: 0.5),
-                ).animate().fadeIn(delay: 1.seconds).slideY(begin: 0.5),
-                
-                const SizedBox(height: 60),
-                
-                // Subtle loading indicator at bottom
-                const SizedBox(
-                  width: 30,
-                  height: 30,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
+      backgroundColor: AppTheme.background,
+      body: Stack(
+        children: [
+          // Ambient Background Lights
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.7,
+              height: MediaQuery.of(context).size.width * 0.7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    blurRadius: 120,
+                    spreadRadius: 60,
                   ),
-                ).animate().fadeIn(delay: 2.seconds),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+          Positioned(
+            bottom: -100,
+            left: -100,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.6,
+              height: MediaQuery.of(context).size.width * 0.6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF70aaff).withValues(alpha: 0.1),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF70aaff).withValues(alpha: 0.1),
+                    blurRadius: 100,
+                    spreadRadius: 50,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Center(
+            child: AnimatedOpacity(
+              opacity: _isNavigating ? 0.0 : 1.0,
+              duration: 600.ms,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo Container mimicking the "Lens" effect
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.3)),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppTheme.primary.withValues(alpha: 0.2),
+                          const Color(0xFF599cf9).withValues(alpha: 0.1),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          blurRadius: 40,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.lens_blur, size: 60, color: AppTheme.primary),
+                  )
+                  .animate()
+                  .scale(duration: 1.seconds, curve: Curves.elasticOut)
+                  .shimmer(delay: 1200.ms, duration: 2.seconds),
+
+                  const SizedBox(height: 48),
+
+                  Text(
+                    'Welcome to\nthe Archive',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.headingStyle.copyWith(
+                      fontSize: 40,
+                      letterSpacing: -1.0,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, curve: Curves.easeOutCubic),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    'Experience your memories through\na modern, reels-style lens.',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.bodyStyle.copyWith(
+                      fontSize: 16,
+                      color: AppTheme.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ).animate().fadeIn(delay: 1.seconds).slideY(begin: 0.5),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
