@@ -7,6 +7,7 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import '../../core/theme.dart';
 import '../../core/database.dart';
 import '../swipe/swipe_provider.dart';
+import './folders_provider.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/providers/nav_provider.dart';
 
@@ -32,15 +33,22 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
     final tags = await db.query('tags');
     setState(() {
       _tags = tags;
-      if (_tags.isNotEmpty) _selectedTagId = _tags[0]['id'].toString();
+      // We don't auto-select a tag anymore to allow album view by default
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final albumsAsync = ref.watch(albumsProvider);
-    final photoListAsync = ref.watch(photoListProvider);
     final selectedAlbum = ref.watch(selectedAlbumProvider);
+
+    // Grid data source
+    AsyncValue<List<AssetEntity>> photoSource;
+    if (_selectedTagId != null) {
+      photoSource = ref.watch(taggedPhotosProvider(_selectedTagId!));
+    } else {
+      photoSource = ref.watch(photoListProvider);
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -57,14 +65,23 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
                     'Library',
                     style: AppTheme.headingStyle.copyWith(fontSize: 32),
                   ),
-                  if (selectedAlbum != null)
+                  if (selectedAlbum != null || _selectedTagId != null)
                     TextButton.icon(
-                      onPressed: () => ref.read(selectedAlbumProvider.notifier).setAlbum(null),
+                      onPressed: () {
+                        ref.read(selectedAlbumProvider.notifier).setAlbum(null);
+                        setState(() => _selectedTagId = null);
+                      },
                       icon: const Icon(Icons.close, size: 16, color: AppTheme.accentColor),
-                      label: const Text('Clear Filter', style: TextStyle(color: AppTheme.accentColor)),
+                      label: const Text('Clear Filters', style: TextStyle(color: AppTheme.accentColor)),
                     ).animate().fadeIn(),
                 ],
               ),
+            ),
+
+            // Albums List Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Text('Device Albums', style: AppTheme.bodyStyle.copyWith(color: Colors.white70, fontSize: 14)),
             ),
 
             // Albums List
@@ -81,9 +98,8 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
                     
                     return GestureDetector(
                       onTap: () {
+                        setState(() => _selectedTagId = null); // Clear tag selection when picking album
                         ref.read(selectedAlbumProvider.notifier).setAlbum(album);
-                        ref.read(swipeIndexProvider.notifier).reset();
-                        ref.read(navTabProvider.notifier).setTab(NavTab.swipe);
                       },
                       child: Container(
                         width: 140,
@@ -100,9 +116,6 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
                                     color: isSelected ? AppTheme.accentColor : Colors.white.withValues(alpha: 0.1),
                                     width: 2,
                                   ),
-                                  boxShadow: isSelected ? [
-                                    BoxShadow(color: AppTheme.accentColor.withValues(alpha: 0.3), blurRadius: 12)
-                                  ] : [],
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(18),
@@ -173,7 +186,13 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
+            // Tag Pills Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Text('Custom Labels', style: AppTheme.bodyStyle.copyWith(color: Colors.white70, fontSize: 14)),
+            ),
 
             // Tag Pills
             SingleChildScrollView(
@@ -185,7 +204,10 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: GestureDetector(
-                      onTap: () => setState(() => _selectedTagId = tag['id'].toString()),
+                      onTap: () {
+                        ref.read(selectedAlbumProvider.notifier).setAlbum(null); // Clear album when picking tag
+                        setState(() => _selectedTagId = tag['id'].toString());
+                      },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -205,7 +227,7 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
                         ),
                       ),
                     ),
-                  ).animate().fadeIn(delay: 400.ms).scale(begin: const Offset(0.8, 0.8));
+                  ).animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.8, 0.8));
                 }).toList(),
               ),
             ),
@@ -214,26 +236,41 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
 
             // Grid
             Expanded(
-              child: photoListAsync.when(
-                data: (assets) => MasonryGridView.count(
-                  padding: const EdgeInsets.all(16),
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  itemCount: assets.length > 30 ? 30 : assets.length,
-                  itemBuilder: (context, index) {
-                    return _FolderGridItem(asset: assets[index])
-                        .animate()
-                        .fadeIn(delay: (index % 10 * 50).ms)
-                        .scale(begin: const Offset(0.9, 0.9));
-                  },
-                ),
+              child: photoSource.when(
+                data: (assets) => assets.isEmpty 
+                  ? _buildEmptyState()
+                  : MasonryGridView.count(
+                    padding: const EdgeInsets.all(16),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    itemCount: assets.length,
+                    itemBuilder: (context, index) {
+                      return _FolderGridItem(asset: assets[index])
+                          .animate()
+                          .fadeIn(delay: (index % 10 * 50).ms)
+                          .scale(begin: const Offset(0.9, 0.9));
+                    },
+                  ),
                 loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.accentColor)),
                 error: (e, s) => Center(child: Text('Error: $e')),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.photo_library_outlined, size: 64, color: Colors.white.withValues(alpha: 0.1)),
+          const SizedBox(height: 16),
+          const Text('No photos found', style: TextStyle(color: Colors.white38)),
+        ],
       ),
     );
   }

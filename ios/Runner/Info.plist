@@ -5,13 +5,13 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Gallery Reels needs access to your photos to help you clean your gallery.</string>
+	<string>SnapClean needs access to your photos to help you clean your gallery.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Gallery Reels needs permission to organize your photos.</string>
+	<string>SnapClean needs permission to organize your photos.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Gallery Reels</string>
+	<string>SnapClean</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,7 +19,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>gallery_reels</string>
+	<string>SnapClean</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

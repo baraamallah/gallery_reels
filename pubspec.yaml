@@ -28,6 +28,7 @@ dependencies:
   path_provider: ^2.1.2
   photo_manager_image_provider: ^2.2.0
   cross_file: ^0.3.5+2
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -37,6 +38,15 @@ dev_dependencies:
   custom_lint: ^0.8.1
   riverpod_lint: ^3.1.0
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21

@@ -6,6 +6,7 @@ import 'package:photo_manager/photo_manager.dart';
 import '../../core/theme.dart';
 import '../../core/database.dart';
 import '../../shared/widgets/glass_card.dart';
+import '../about/about_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -27,10 +28,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _loadStats() async {
     final stats = await DatabaseService.instance.getTodayStats();
     final count = await PhotoManager.getAssetCount(type: RequestType.image);
-    setState(() {
-      _stats = stats;
-      _totalPhotos = count;
-    });
+    if (mounted) {
+      setState(() {
+        _stats = stats;
+        _totalPhotos = count;
+      });
+    }
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
   }
 
   String _formatSize(int bytes) {
@@ -47,7 +57,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final reviewedCount = _stats?['reviewed'] as int? ?? 0;
     final spaceFreed = _stats?['space_freed'] as int? ?? 0;
+    final target = 50; // Daily target
+    final healthProgress = (reviewedCount / target).clamp(0.0, 1.0);
     
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -58,13 +71,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              Text(
-                'Good evening,',
-                style: AppTheme.bodyStyle.copyWith(fontSize: 18),
-              ),
-              Text(
-                'Gallery Reels',
-                style: AppTheme.headingStyle.copyWith(fontSize: 32),
+              
+              // Top Section: Greeting & Health Score
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getGreeting(),
+                        style: AppTheme.bodyStyle.copyWith(fontSize: 18, color: Colors.white70),
+                      ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2),
+                      Text(
+                        'SnapClean Curator',
+                        style: AppTheme.headingStyle.copyWith(fontSize: 32),
+                      ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      _CleanupHealthIndicator(progress: healthProgress)
+                          .animate()
+                          .fadeIn(delay: 400.ms)
+                          .scale(begin: const Offset(0.8, 0.8)),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.info_outline, color: Colors.white70),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AboutScreen()),
+                        ),
+                      ).animate().fadeIn(delay: 600.ms),
+                    ],
+                  ),
+                ],
               ),
               
               const SizedBox(height: 40),
@@ -80,63 +122,126 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   _StatCard(
                     title: 'Reviewed today',
-                    value: _stats?['reviewed']?.toString() ?? '0',
+                    value: reviewedCount.toString(),
                     icon: PhosphorIcons.checkCircle(),
                     color: AppTheme.keepColor,
+                    delay: 500,
                   ),
                   _StatCard(
-                    title: 'Space to free',
+                    title: 'Space freed',
                     value: _formatSize(spaceFreed),
                     icon: PhosphorIcons.broom(),
                     color: AppTheme.accentColor,
+                    delay: 600,
                   ),
                   _StatCard(
                     title: 'Current streak',
-                    value: '5',
+                    value: '7',
                     icon: PhosphorIcons.fire(),
                     color: AppTheme.shareColor,
                     isStreak: true,
+                    delay: 700,
                   ),
                   _StatCard(
                     title: 'Library size',
                     value: _totalPhotos.toString(),
                     icon: PhosphorIcons.image(),
                     color: AppTheme.tagColor,
+                    delay: 800,
                   ),
                 ],
               ),
 
               const SizedBox(height: 32),
 
-              // Progress Section
+              // New Insights Section
               GlassCard(
                 padding: const EdgeInsets.all(24),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Weekly Progress', style: AppTheme.headingStyle),
-                        Text('80%', style: TextStyle(color: AppTheme.accentColor, fontWeight: FontWeight.bold)),
+                        const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
+                        const SizedBox(width: 8),
+                        Text('Weekly Insights', style: AppTheme.headingStyle.copyWith(fontSize: 18)),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: 0.8,
-                        minHeight: 12,
-                        backgroundColor: Colors.white.withValues(alpha: 0.05),
-                        color: AppTheme.accentColor,
-                      ),
+                    const SizedBox(height: 20),
+                    _InsightRow(
+                      label: 'Cleanest day',
+                      value: 'Tuesday',
+                      icon: Icons.calendar_today,
+                      color: AppTheme.accentColor,
+                    ),
+                    const Divider(color: Colors.white10),
+                    _InsightRow(
+                      label: 'Most deleted',
+                      value: 'Screenshots',
+                      icon: Icons.phonelink_setup,
+                      color: AppTheme.deleteColor,
+                    ),
+                    const Divider(color: Colors.white10),
+                    _InsightRow(
+                      label: 'Potential space',
+                      value: '2.4 GB',
+                      icon: Icons.storage,
+                      color: Colors.greenAccent,
                     ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2),
+              ).animate().fadeIn(delay: 900.ms).slideY(begin: 0.2),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CleanupHealthIndicator extends StatelessWidget {
+  final double progress;
+
+  const _CleanupHealthIndicator({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 70,
+          height: 70,
+          child: CircularProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
+            color: AppTheme.accentColor,
+            strokeWidth: 8,
+            strokeCap: StrokeCap.round,
+          ),
+        ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${(progress * 100).toInt()}%',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const Text(
+              'HEALTH',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 8,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -147,6 +252,7 @@ class _StatCard extends StatelessWidget {
   final PhosphorIconData icon;
   final Color color;
   final bool isStreak;
+  final int delay;
 
   const _StatCard({
     required this.title,
@@ -154,6 +260,7 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.isStreak = false,
+    required this.delay,
   });
 
   @override
@@ -171,7 +278,7 @@ class _StatCard extends StatelessWidget {
               if (isStreak)
                 const PhosphorIcon(PhosphorIconsFill.fire, color: Colors.orange, size: 20)
                     .animate(onPlay: (c) => c.repeat())
-                    .shimmer(duration: 1.seconds),
+                    .shimmer(duration: 2.seconds),
             ],
           ),
           Column(
@@ -179,13 +286,53 @@ class _StatCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: AppTheme.headingStyle.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
-              ).animate().scale(delay: 200.ms, curve: Curves.easeOutBack),
+                style: AppTheme.headingStyle.copyWith(fontSize: 22, fontWeight: FontWeight.bold),
+              ).animate().scale(delay: (delay + 100).ms, curve: Curves.easeOutBack),
               Text(
                 title,
-                style: AppTheme.captionStyle.copyWith(fontSize: 12),
+                style: AppTheme.captionStyle.copyWith(fontSize: 11),
               ),
             ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: delay.ms).slideY(begin: 0.2);
+  }
+}
+
+class _InsightRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _InsightRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 16),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
           ),
         ],
       ),

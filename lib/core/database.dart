@@ -139,4 +139,49 @@ class DatabaseService {
       whereArgs: [date],
     );
   }
+
+  // Tag management
+  Future<void> tagPhoto(String photoId, String tagId) async {
+    final db = await instance.database;
+    await db.insert(
+      'photo_tags',
+      {
+        'photo_id': photoId,
+        'tag_id': tagId,
+        'tagged_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> untagPhoto(String photoId, String tagId) async {
+    final db = await instance.database;
+    await db.delete(
+      'photo_tags',
+      where: 'photo_id = ? AND tag_id = ?',
+      whereArgs: [photoId, tagId],
+    );
+  }
+
+  Future<List<String>> getPhotoTags(String photoId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'photo_tags',
+      columns: ['tag_id'],
+      where: 'photo_id = ?',
+      whereArgs: [photoId],
+    );
+    return result.map((r) => r['tag_id'] as String).toList();
+  }
+
+  Future<List<String>> getPhotosByTag(String tagId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'photo_tags',
+      columns: ['photo_id'],
+      where: 'tag_id = ?',
+      orderBy: 'tagged_at DESC',
+    );
+    return result.map((r) => r['photo_id'] as String).toList();
+  }
 }
