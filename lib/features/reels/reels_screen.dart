@@ -6,7 +6,9 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../swipe/swipe_provider.dart';
 import '../../core/theme.dart';
+import '../../core/haptics.dart';
 import '../../core/database.dart';
+
 import '../../shared/widgets/glass_card.dart';
 
 class ReelsScreen extends ConsumerWidget {
@@ -36,16 +38,16 @@ class ReelsScreen extends ConsumerWidget {
   }
 }
 
-class ReelPage extends StatefulWidget {
+class ReelPage extends ConsumerStatefulWidget {
   final AssetEntity asset;
 
   const ReelPage({super.key, required this.asset});
 
   @override
-  State<ReelPage> createState() => _ReelPageState();
+  ConsumerState<ReelPage> createState() => _ReelPageState();
 }
 
-class _ReelPageState extends State<ReelPage> {
+class _ReelPageState extends ConsumerState<ReelPage> {
   bool _showOverlay = true;
   Timer? _hideTimer;
   bool _isLiked = false;
@@ -96,10 +98,11 @@ class _ReelPageState extends State<ReelPage> {
     if (_isLiked) {
       await DatabaseService.instance.untagPhoto(widget.asset.id, '2');
       setState(() => _isLiked = false);
+      HapticHelper.light();
     } else {
       await DatabaseService.instance.tagPhoto(widget.asset.id, '2');
       setState(() => _isLiked = true);
-      // Optional: Show a little heart animation
+      HapticHelper.medium();
     }
   }
 
@@ -107,6 +110,7 @@ class _ReelPageState extends State<ReelPage> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _toggleOverlay,
+      onDoubleTap: _handleLike,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -178,28 +182,47 @@ class _ReelPageState extends State<ReelPage> {
                               _ReelAction(
                                 icon: Icons.delete_outline,
                                 color: AppTheme.deleteColor,
-                                label: 'Delete',
-                                onTap: () {
-                                  // Implementation for delete in Reels
+                                onTap: () async {
+                                  HapticHelper.heavy();
+                                  final asset = widget.asset;
+                                  final file = await asset.file;
+                                  final size = await file?.length() ?? 0;
+
+                                  await DatabaseService.instance.addToTrash(asset.id, asset.title, size);
+                                  await DatabaseService.instance.updateStats(deleted: 1, spaceFreed: size);
+
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Photo moved to trash'),
+                                      backgroundColor: Colors.black87,
+                                      action: SnackBarAction(
+                                        label: 'UNDO',
+                                        textColor: AppTheme.accentColor,
+                                        onPressed: () async {
+                                          HapticHelper.light();
+                                          await DatabaseService.instance.removeFromTrash(asset.id);
+                                          await DatabaseService.instance.updateStats(deleted: -1, spaceFreed: -size);
+                                        },
+                                      ),
+                                    ),
+                                  );
                                 },
                               ),
                               _ReelAction(
                                 icon: _isLiked ? Icons.favorite : Icons.favorite_border,
                                 color: _isLiked ? AppTheme.keepColor : Colors.white,
-                                label: 'Like',
                                 isHighlighted: _isLiked,
                                 onTap: _handleLike,
                               ),
                               _ReelAction(
                                 icon: Icons.folder_open,
                                 color: AppTheme.tagColor,
-                                label: 'Tag',
                                 onTap: () {},
                               ),
                               _ReelAction(
                                 icon: Icons.share_outlined,
                                 color: AppTheme.shareColor,
-                                label: 'Share',
                                 onTap: () {},
                               ),
                             ],
@@ -229,14 +252,12 @@ class _ReelPageState extends State<ReelPage> {
 class _ReelAction extends StatelessWidget {
   final IconData icon;
   final Color color;
-  final String label;
   final VoidCallback onTap;
   final bool isHighlighted;
 
   const _ReelAction({
     required this.icon,
     required this.color,
-    required this.label,
     required this.onTap,
     this.isHighlighted = false,
   });
@@ -257,15 +278,6 @@ class _ReelAction extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: isHighlighted ? color : Colors.white70,
-              fontSize: 11,
-              fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
-            ),
           ),
         ],
       ),
