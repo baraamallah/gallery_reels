@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:photo_manager/photo_manager.dart';
-import '../../core/theme.dart';
-import '../../core/database.dart';
-import '../../shared/widgets/glass_card.dart';
-import '../about/about_screen.dart';
+import 'dart:ui';
 
+
+import '../../core/theme.dart';
+
+
+// The new Home Screen serves as the "Library" from the design
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -16,8 +17,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  Map<String, dynamic>? _stats;
   int _totalPhotos = 0;
+  int _videoCount = 0;
+  int _screenshotCount = 0;
 
   @override
   void initState() {
@@ -26,299 +28,439 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _loadStats() async {
-    final stats = await DatabaseService.instance.getTodayStats();
-    final count = await PhotoManager.getAssetCount(type: RequestType.image);
+    final imageCount = await PhotoManager.getAssetCount(type: RequestType.image);
+    final vidCount = await PhotoManager.getAssetCount(type: RequestType.video);
+
+    // In a real app we'd query specifically for screenshots,
+    // but for UI purposes we'll mock it based on total
+    final mockScreenshotCount = (imageCount * 0.15).toInt();
+
     if (mounted) {
       setState(() {
-        _stats = stats;
-        _totalPhotos = count;
+        _totalPhotos = imageCount;
+        _videoCount = vidCount;
+        _screenshotCount = mockScreenshotCount;
       });
     }
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning,';
-    if (hour < 17) return 'Good afternoon,';
-    return 'Good evening,';
-  }
-
-  String _formatSize(int bytes) {
-    if (bytes <= 0) return '0 B';
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    double size = bytes.toDouble();
-    int unitIndex = 0;
-    while (size >= 1024 && unitIndex < suffixes.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-    return '${size.toStringAsFixed(1)} ${suffixes[unitIndex]}';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final reviewedCount = _stats?['reviewed'] as int? ?? 0;
-    final spaceFreed = _stats?['space_freed'] as int? ?? 0;
-    final target = 50; // Daily target
-    final healthProgress = (reviewedCount / target).clamp(0.0, 1.0);
-    
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              
-              // Top Section: Greeting & Health Score
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: AppTheme.background,
+      body: Stack(
+        children: [
+          // Ambient Glow 1
+          Positioned(
+            top: -50,
+            left: -50,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.8,
+              height: MediaQuery.of(context).size.width * 0.8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.primary.withValues(alpha: 0.05),
+                boxShadow: [
+                  BoxShadow(color: AppTheme.primary.withValues(alpha: 0.05), blurRadius: 100),
+                ],
+              ),
+            ),
+          ),
+          // Ambient Glow 2
+          Positioned(
+            bottom: 100,
+            right: -50,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.width * 0.9,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF70aaff).withValues(alpha: 0.03),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFF70aaff).withValues(alpha: 0.03), blurRadius: 120),
+                ],
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 80, left: 24, right: 24, bottom: 120),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _getGreeting(),
-                        style: AppTheme.bodyStyle.copyWith(fontSize: 18, color: Colors.white70),
-                      ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2),
-                      Text(
-                        'SnapClean Curator',
-                        style: AppTheme.headingStyle.copyWith(fontSize: 32),
-                      ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      _CleanupHealthIndicator(progress: healthProgress)
-                          .animate()
-                          .fadeIn(delay: 400.ms)
-                          .scale(begin: const Offset(0.8, 0.8)),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.info_outline, color: Colors.white70),
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AboutScreen()),
-                        ),
-                      ).animate().fadeIn(delay: 600.ms),
-                    ],
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 40),
+                  // Header
+                  Text(
+                    'Library',
+                    style: AppTheme.headingStyle.copyWith(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1.0,
+                    ),
+                  ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Organize and explore your visual archive.',
+                    style: AppTheme.bodyStyle.copyWith(
+                      color: AppTheme.primary.withValues(alpha: 0.8),
+                      fontSize: 16,
+                    ),
+                  ).animate().fadeIn(delay: 200.ms),
 
-              // Stats Grid
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 1.1,
-                children: [
-                  _StatCard(
-                    value: reviewedCount.toString(),
-                    icon: PhosphorIcons.checkCircle(),
-                    color: AppTheme.keepColor,
-                    delay: 500,
-                  ),
-                  _StatCard(
-                    value: _formatSize(spaceFreed),
-                    icon: PhosphorIcons.broom(),
-                    color: AppTheme.accentColor,
-                    delay: 600,
-                  ),
-                  _StatCard(
-                    value: '7',
-                    icon: PhosphorIcons.fire(),
-                    color: AppTheme.shareColor,
-                    isStreak: true,
-                    delay: 700,
-                  ),
-                  _StatCard(
-                    value: _totalPhotos.toString(),
-                    icon: PhosphorIcons.image(),
-                    color: AppTheme.tagColor,
-                    delay: 800,
-                  ),
-                ],
-              ),
+                  const SizedBox(height: 48),
 
-              const SizedBox(height: 32),
+                  // System Albums Header
+                  Text(
+                    'System Albums',
+                    style: AppTheme.headingStyle.copyWith(fontSize: 24),
+                  ).animate().fadeIn(delay: 300.ms),
 
-              // New Insights Section
-              GlassCard(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  const SizedBox(height: 24),
+
+                  // System Albums Bento Grid
+                  SizedBox(
+                    height: 320,
+                    child: Row(
                       children: [
-                        const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
-                        const SizedBox(width: 8),
-                        Text('Weekly Insights', style: AppTheme.headingStyle.copyWith(fontSize: 18)),
+                        // Left Column (Recents - spans full height)
+                        Expanded(
+                          flex: 2,
+                          child: _buildBentoCard(
+                            title: 'Recents',
+                            subtitle: '$_totalPhotos Items',
+                            icon: Icons.schedule,
+                            imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA8VLpk65I7_2Xj-leOiK53_Z0eiUMRX3ucYOzJ8XwtvjPXSmixEz4Gc6kmII_mK4oNu2WXA8ayTyAYa0Y468ZhrbP0fSvciDijUNQgwGrDUfyToCpA9w1C1z9FcVgm7TB1Q994lI-tDQJnYNAKrKWXo1rxMRNCqE5d67u7TqWlmIx6XD18HFrAD5M_lfbLHmt71IAmWV_OOYwtymxYBMvcKd89JcvDD3LSYd3OPQpNbbtXgLc3DMmxE34iY9PpYWHcGtYiIHVvjGU',
+                            isLarge: true,
+                            delay: 400,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Right Column (2 stacked items)
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: _buildBentoCard(
+                                  title: 'Favorites',
+                                  subtitle: '142 Items',
+                                  icon: Icons.favorite,
+                                  isLarge: false,
+                                  iconScale: true,
+                                  delay: 500,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Expanded(
+                                child: _buildBentoCard(
+                                  title: 'Videos',
+                                  subtitle: '$_videoCount Items',
+                                  icon: Icons.movie,
+                                  isLarge: false,
+                                  iconScale: true,
+                                  delay: 600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    _InsightRow(
-                      value: 'Tuesday',
-                      icon: Icons.calendar_today,
-                      color: AppTheme.accentColor,
-                    ),
-                    const Divider(color: Colors.white10),
-                    _InsightRow(
-                      value: 'Screenshots',
-                      icon: Icons.phonelink_setup,
-                      color: AppTheme.deleteColor,
-                    ),
-                    const Divider(color: Colors.white10),
-                    _InsightRow(
-                      value: '2.4 GB',
-                      icon: Icons.storage,
-                      color: Colors.greenAccent,
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 900.ms).slideY(begin: 0.2),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+                  ),
 
-class _CleanupHealthIndicator extends StatelessWidget {
-  final double progress;
+                  const SizedBox(height: 16),
 
-  const _CleanupHealthIndicator({required this.progress});
+                  // Second Row of System Albums
+                  SizedBox(
+                    height: 140,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildBentoCard(
+                            title: 'Screenshots',
+                            subtitle: '$_screenshotCount Items',
+                            icon: Icons.screenshot,
+                            isLarge: false,
+                            delay: 700,
+                            gradient: const LinearGradient(
+                              begin: Alignment.topRight,
+                              end: Alignment.bottomLeft,
+                              colors: [AppTheme.surfaceContainerHigh, AppTheme.surfaceContainerLow],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildBentoCard(
+                            title: 'Selfies',
+                            subtitle: '12 Items',
+                            icon: Icons.person,
+                            isLarge: false,
+                            delay: 800,
+                            gradient: const LinearGradient(
+                              begin: Alignment.bottomLeft,
+                              end: Alignment.topRight,
+                              colors: [AppTheme.surfaceContainerHigh, AppTheme.surfaceContainerLow],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        SizedBox(
-          width: 70,
-          height: 70,
-          child: CircularProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.white.withValues(alpha: 0.05),
-            color: AppTheme.accentColor,
-            strokeWidth: 8,
-            strokeCap: StrokeCap.round,
-          ),
-        ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${(progress * 100).toInt()}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+                  const SizedBox(height: 48),
+
+                  // My Tags Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'My Tags',
+                        style: AppTheme.headingStyle.copyWith(fontSize: 24),
+                      ),
+                      TextButton(
+                        onPressed: () {},
+                        child: Text(
+                          'View All',
+                          style: AppTheme.bodyStyle.copyWith(color: AppTheme.primary, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ).animate().fadeIn(delay: 900.ms),
+
+                  const SizedBox(height: 24),
+
+                  // Tag Chips
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildTagChip('Architecture', 42, isActive: true),
+                      _buildTagChip('Portraits', 18),
+                      _buildTagChip('Landscapes', 105),
+                      _buildTagChip('Macro', 7),
+                      _buildTagChip('New Tag', 0, isAdd: true),
+                    ],
+                  ).animate().fadeIn(delay: 1000.ms),
+
+                  const SizedBox(height: 32),
+
+                  // Curated Tag Preview Grid
+                  SizedBox(
+                    height: 250,
+                    child: Row(
+                      children: [
+                        // Left Large Image
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              image: const DecorationImage(
+                                image: NetworkImage('https://lh3.googleusercontent.com/aida-public/AB6AXuCe5Y0KiEw-a_ZgB_hu8VfSD9yFyFRDDkd2Oyd9uOOaS59KVnhxDswLQK7KvnoE0jG2j6joWRpOT4FhV9ukvAh2iu7iAiPiXU6IPr9MGqm_wN2Bd2nJPV5T_GKyMFWYHp-SlnR-Cmk7a7H2K9djfht2Py2Bo3r7TeLaYGkK6eJhS6d3tLC0BuBf51lJIbraH0rKykodCC9_rFuief5muPTyBjcKg7yyEO16j4ZLDHdWtEdFtdyD5EFfEKdDRoZIMHe8AnPK3tf3RIE'),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            alignment: Alignment.bottomLeft,
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                                ),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Text('Minimalist Concrete', style: AppTheme.headingStyle.copyWith(fontSize: 14)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Right Stacked Images
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(24),
+                                    image: const DecorationImage(
+                                      image: NetworkImage('https://lh3.googleusercontent.com/aida-public/AB6AXuAzQLPrslp8kQrDYzP72ORf2A6h7h0hJpdpfEX5ImzF8fyWsucH13cGG_cYOwMz7CYlBgf2mAud-pQW9lnL-gdqNq9lc9ezrsbny2mcg4R_wEmBVosHexvOR97UynYANf8LnlR6bCleQJWTW3UO4ydqdkCvzob8AbghfBaVgggxTTeRCJrMSONia_SVxzs2rZpOfs8GdOrpUsmCr-3eLIKyML6n8kyBOrKyP51z3tBscdkLsgQT6DfM_hBppVRigkx6RaoirqwTrfQ'),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text('+39', style: AppTheme.headingStyle.copyWith(fontSize: 24, color: AppTheme.primary, fontWeight: FontWeight.w300)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 1100.ms).slideY(begin: 0.2),
+                ],
               ),
             ),
-            const Text(
-              'HEALTH',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 8,
-                letterSpacing: 1,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String value;
-  final PhosphorIconData icon;
-  final Color color;
-  final bool isStreak;
-  final int delay;
-
-  const _StatCard({
-    required this.value,
-    required this.icon,
-    required this.color,
-    this.isStreak = false,
-    required this.delay,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              PhosphorIcon(icon, color: color, size: 24),
-              if (isStreak)
-                const PhosphorIcon(PhosphorIconsFill.fire, color: Colors.orange, size: 20)
-                    .animate(onPlay: (c) => c.repeat())
-                    .shimmer(duration: 2.seconds),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: AppTheme.headingStyle.copyWith(fontSize: 22, fontWeight: FontWeight.bold),
-              ).animate().scale(delay: (delay + 100).ms, curve: Curves.easeOutBack),
-
-            ],
           ),
         ],
       ),
-    ).animate().fadeIn(delay: delay.ms).slideY(begin: 0.2);
+    );
   }
-}
 
-class _InsightRow extends StatelessWidget {
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _InsightRow({
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+  Widget _buildBentoCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    String? imageUrl,
+    required bool isLarge,
+    bool iconScale = false,
+    LinearGradient? gradient,
+    required int delay,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        gradient: gradient,
+        image: imageUrl != null ? DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.6), BlendMode.darken),
+        ) : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (iconScale)
+              Center(
+                child: Icon(icon, size: 80, color: AppTheme.primary.withValues(alpha: 0.1)),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, color: AppTheme.primary, size: isLarge ? 24 : 20),
+                      if (isLarge) ...[
+                        const SizedBox(width: 12),
+                        Text(title, style: AppTheme.headingStyle.copyWith(fontSize: 20)),
+                      ]
+                    ],
+                  ),
+                  if (!isLarge) ...[
+                    const SizedBox(height: 8),
+                    Text(title, style: AppTheme.headingStyle.copyWith(fontSize: 16)),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: AppTheme.bodyStyle.copyWith(fontSize: 12)),
+                ],
+              ),
             ),
-            child: Icon(icon, color: color, size: 18),
+            if (isLarge)
+              Positioned(
+                top: 16,
+                right: 16,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceVariant.withValues(alpha: 0.3),
+                        border: Border.all(color: AppTheme.onSurfaceVariant.withValues(alpha: 0.1)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.primaryContainer,
+                            ),
+                          ).animate(onPlay: (c) => c.repeat()).fade(duration: 1.seconds),
+                          const SizedBox(width: 6),
+                          Text('ACTIVE', style: AppTheme.labelStyle.copyWith(fontSize: 10, color: AppTheme.onSurface)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: delay.ms).scale(begin: const Offset(0.95, 0.95));
+  }
+
+  Widget _buildTagChip(String label, int count, {bool isActive = false, bool isAdd = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: isActive
+            ? const Color(0xFF00677D) // secondary-container
+            : AppTheme.surfaceVariant.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: isActive
+            ? null
+            : Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isAdd ? Icons.add : Icons.label,
+            size: 18,
+            color: isActive ? const Color(0xFFEDFAFF) : AppTheme.onSurfaceVariant,
           ),
-          const SizedBox(width: 16),
-          const Spacer(),
+          const SizedBox(width: 8),
           Text(
-            value,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            label,
+            style: AppTheme.bodyStyle.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isActive ? const Color(0xFFEDFAFF) : AppTheme.onSurface,
+            ),
           ),
+          if (!isAdd) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xFFEDFAFF).withValues(alpha: 0.2)
+                    : AppTheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                count.toString(),
+                style: AppTheme.labelStyle.copyWith(
+                  fontSize: 10,
+                  color: isActive ? const Color(0xFFEDFAFF) : AppTheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ]
         ],
       ),
     );

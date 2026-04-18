@@ -63,23 +63,36 @@ class CardStack extends ConsumerWidget {
     }
 
     // Static background cards
-    final scale = 1.0 - (position * 0.05);
-    final offset = Offset(0, position * 20.0);
+    final scale = 1.0 - (position * 0.02);
+    // don't offset y heavily, just scale down behind
     final opacity = 1.0 - (position * 0.3);
 
-    return Transform.translate(
-      offset: offset,
+    return Align(
+      alignment: Alignment.center,
       child: Transform.scale(
         scale: scale,
         child: Opacity(
           opacity: opacity.clamp(0.0, 1.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(30),
-            child: AssetEntityImage(
-              asset,
-              isOriginal: false,
-              thumbnailSize: const ThumbnailSize(500, 500),
-              fit: BoxFit.cover,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.8),
+                  blurRadius: 60,
+                  spreadRadius: -15,
+                  offset: const Offset(0, 20),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: AssetEntityImage(
+                asset,
+                isOriginal: false,
+                thumbnailSize: const ThumbnailSize(500, 500),
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
@@ -100,28 +113,24 @@ class CardStack extends ConsumerWidget {
 
     // Perform native action
     switch (direction) {
-      case SwipeDirection.right: // Delete
+      case SwipeDirection.left: // Trash
         HapticHelper.heavy();
         
-        // Calculate file size
         final file = await asset.file;
         final size = await file?.length() ?? 0;
         
-        // Add to virtual trash instead of immediate hard delete
         await DatabaseService.instance.addToTrash(asset.id, asset.title, size);
         await DatabaseService.instance.updateStats(deleted: 1, spaceFreed: size);
         break;
-      case SwipeDirection.left: // Keep
-        // Just move to next
+      case SwipeDirection.right: // Keep
         break;
       case SwipeDirection.up: // Tag
-        // TODO: Show tag picker or use default tag
         break;
       case SwipeDirection.down: // Share
         HapticHelper.medium();
         final file = await asset.file;
         if (file != null) {
-          await SharePlus.instance.share(files: [XFile(file.path)]);
+          await Share.shareXFiles([XFile(file.path)]);
         }
         break;
     }
