@@ -130,7 +130,9 @@ class CardStack extends ConsumerWidget {
         HapticHelper.medium();
         final file = await asset.file;
         if (file != null) {
-          await Share.shareXFiles([XFile(file.path)]);
+          await SharePlus.instance.share(
+            ShareParams(files: [XFile(file.path)]),
+          );
         }
         break;
     }

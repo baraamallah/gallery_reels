@@ -24,7 +24,6 @@ class _SwipeCardState extends State<SwipeCard> with SingleTickerProviderStateMix
   late AnimationController _controller;
   late Animation<Offset> _animation;
   Offset _dragOffset = Offset.zero;
-  bool _isDragging = false;
 
   @override
   void initState() {
@@ -40,9 +39,6 @@ class _SwipeCardState extends State<SwipeCard> with SingleTickerProviderStateMix
   }
 
   void _onPanStart(DragStartDetails details) {
-    setState(() {
-      _isDragging = true;
-    });
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -52,10 +48,6 @@ class _SwipeCardState extends State<SwipeCard> with SingleTickerProviderStateMix
   }
 
   void _onPanEnd(DragEndDetails details) {
-    setState(() {
-      _isDragging = false;
-    });
-
     final screenSize = MediaQuery.of(context).size;
     final threshold = screenSize.width * 0.3;
 
