@@ -9,7 +9,7 @@ import '../../core/database.dart';
 import '../swipe/swipe_provider.dart';
 import './folders_provider.dart';
 import '../../shared/widgets/glass_card.dart';
-import '../../shared/providers/nav_provider.dart';
+
 
 class FoldersScreen extends ConsumerStatefulWidget {
   const FoldersScreen({super.key});
@@ -20,6 +20,7 @@ class FoldersScreen extends ConsumerStatefulWidget {
 
 class _FoldersScreenState extends ConsumerState<FoldersScreen> {
   String? _selectedTagId;
+  bool _isGridView = true;
   List<Map<String, dynamic>> _tags = [];
 
   @override
@@ -65,15 +66,22 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
                     'Library',
                     style: AppTheme.headingStyle.copyWith(fontSize: 32),
                   ),
-                  if (selectedAlbum != null || _selectedTagId != null)
-                    TextButton.icon(
-                      onPressed: () {
-                        ref.read(selectedAlbumProvider.notifier).setAlbum(null);
-                        setState(() => _selectedTagId = null);
-                      },
-                      icon: const Icon(Icons.close, size: 16, color: AppTheme.accentColor),
-                      label: const Text('Clear Filters', style: TextStyle(color: AppTheme.accentColor)),
-                    ).animate().fadeIn(),
+                  Row(
+                    children: [
+                      if (selectedAlbum != null || _selectedTagId != null)
+                        IconButton(
+                          onPressed: () {
+                            ref.read(selectedAlbumProvider.notifier).setAlbum(null);
+                            setState(() => _selectedTagId = null);
+                          },
+                          icon: const Icon(Icons.close, size: 16, color: AppTheme.accentColor),
+                        ).animate().fadeIn(),
+                      IconButton(
+                        icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view, color: Colors.white70),
+                        onPressed: () => setState(() => _isGridView = !_isGridView),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -239,19 +247,35 @@ class _FoldersScreenState extends ConsumerState<FoldersScreen> {
               child: photoSource.when(
                 data: (assets) => assets.isEmpty 
                   ? _buildEmptyState()
-                  : MasonryGridView.count(
-                    padding: const EdgeInsets.all(16),
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    itemCount: assets.length,
-                    itemBuilder: (context, index) {
-                      return _FolderGridItem(asset: assets[index])
-                          .animate()
-                          .fadeIn(delay: (index % 10 * 50).ms)
-                          .scale(begin: const Offset(0.9, 0.9));
-                    },
-                  ),
+                  : _isGridView
+                    ? MasonryGridView.count(
+                        padding: const EdgeInsets.all(16),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        itemCount: assets.length,
+                        itemBuilder: (context, index) {
+                          return _FolderGridItem(asset: assets[index])
+                              .animate()
+                              .fadeIn(delay: (index % 10 * 50).ms)
+                              .scale(begin: const Offset(0.9, 0.9));
+                        },
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: assets.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: SizedBox(
+                              height: 300,
+                              child: _FolderGridItem(asset: assets[index]),
+                            ),
+                          ).animate()
+                           .fadeIn(delay: (index % 10 * 50).ms)
+                           .slideY(begin: 0.2);
+                        },
+                      ),
                 loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.accentColor)),
                 error: (e, s) => Center(child: Text('Error: $e')),
               ),

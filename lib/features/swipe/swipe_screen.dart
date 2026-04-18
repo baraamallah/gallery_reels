@@ -6,6 +6,7 @@ import '../../shared/widgets/glass_card.dart';
 import '../../shared/models/swipe_models.dart';
 import '../../core/theme.dart';
 import '../../core/database.dart';
+import '../../core/haptics.dart';
 
 class SwipeScreen extends ConsumerWidget {
   const SwipeScreen({super.key});
@@ -52,6 +53,7 @@ class SwipeScreen extends ConsumerWidget {
                   const SizedBox(width: 12),
                   TextButton(
                     onPressed: () async {
+                      HapticHelper.light();
                       final action = ref.read(undoStackProvider.notifier).pop();
                       if (action != null) {
                         ref.read(swipeIndexProvider.notifier).previous();

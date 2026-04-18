@@ -3,9 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Color tokens
-  static const Color accentColor = Color(0xFFa78bfa); // soft violet — primary
-  static const Color deleteColor = Color(0xFFf87171); // soft red
-  static const Color keepColor = Color(0xFF34d399); // soft green
+  static const Color accentColor = Color(0xFFB392F0); // soft violet — primary
+  static const Color deleteColor = Color(0xFFFF6B6B); // soft red
+  static const Color keepColor = Color(0xFF4ADE80); // soft green
   static const Color tagColor = Color(0xFF60a5fa); // soft blue
   static const Color shareColor = Color(0xFFc084fc); // soft purple
 
@@ -14,7 +14,7 @@ class AppTheme {
     gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Color(0xFF0d0d1a), Color(0xFF1a1030), Color(0xFF0d1a2e)],
+      colors: [Color(0xFF0B0B12), Color(0xFF160F24), Color(0xFF0A111F)],
     ),
   );
 

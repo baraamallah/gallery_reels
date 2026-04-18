@@ -121,21 +121,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 childAspectRatio: 1.1,
                 children: [
                   _StatCard(
-                    title: 'Reviewed today',
                     value: reviewedCount.toString(),
                     icon: PhosphorIcons.checkCircle(),
                     color: AppTheme.keepColor,
                     delay: 500,
                   ),
                   _StatCard(
-                    title: 'Space freed',
                     value: _formatSize(spaceFreed),
                     icon: PhosphorIcons.broom(),
                     color: AppTheme.accentColor,
                     delay: 600,
                   ),
                   _StatCard(
-                    title: 'Current streak',
                     value: '7',
                     icon: PhosphorIcons.fire(),
                     color: AppTheme.shareColor,
@@ -143,7 +140,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     delay: 700,
                   ),
                   _StatCard(
-                    title: 'Library size',
                     value: _totalPhotos.toString(),
                     icon: PhosphorIcons.image(),
                     color: AppTheme.tagColor,
@@ -169,21 +165,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 20),
                     _InsightRow(
-                      label: 'Cleanest day',
                       value: 'Tuesday',
                       icon: Icons.calendar_today,
                       color: AppTheme.accentColor,
                     ),
                     const Divider(color: Colors.white10),
                     _InsightRow(
-                      label: 'Most deleted',
                       value: 'Screenshots',
                       icon: Icons.phonelink_setup,
                       color: AppTheme.deleteColor,
                     ),
                     const Divider(color: Colors.white10),
                     _InsightRow(
-                      label: 'Potential space',
                       value: '2.4 GB',
                       icon: Icons.storage,
                       color: Colors.greenAccent,
@@ -247,7 +240,6 @@ class _CleanupHealthIndicator extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  final String title;
   final String value;
   final PhosphorIconData icon;
   final Color color;
@@ -255,7 +247,6 @@ class _StatCard extends StatelessWidget {
   final int delay;
 
   const _StatCard({
-    required this.title,
     required this.value,
     required this.icon,
     required this.color,
@@ -288,10 +279,7 @@ class _StatCard extends StatelessWidget {
                 value,
                 style: AppTheme.headingStyle.copyWith(fontSize: 22, fontWeight: FontWeight.bold),
               ).animate().scale(delay: (delay + 100).ms, curve: Curves.easeOutBack),
-              Text(
-                title,
-                style: AppTheme.captionStyle.copyWith(fontSize: 11),
-              ),
+
             ],
           ),
         ],
@@ -301,13 +289,11 @@ class _StatCard extends StatelessWidget {
 }
 
 class _InsightRow extends StatelessWidget {
-  final String label;
   final String value;
   final IconData icon;
   final Color color;
 
   const _InsightRow({
-    required this.label,
     required this.value,
     required this.icon,
     required this.color,
@@ -328,7 +314,6 @@ class _InsightRow extends StatelessWidget {
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 16),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
           const Spacer(),
           Text(
             value,
