@@ -60,8 +60,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: cs.surface,
       body: Stack(
         children: [
           // Ambient Background Lights
@@ -73,10 +74,10 @@ class _SplashScreenState extends State<SplashScreen> {
               height: MediaQuery.of(context).size.width * 0.7,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary.withValues(alpha: 0.1),
+                color: cs.primary.withValues(alpha: 0.08),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    color: cs.primary.withValues(alpha: 0.08),
                     blurRadius: 120,
                     spreadRadius: 60,
                   ),
@@ -92,10 +93,10 @@ class _SplashScreenState extends State<SplashScreen> {
               height: MediaQuery.of(context).size.width * 0.6,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF70aaff).withValues(alpha: 0.1),
+                color: cs.secondary.withValues(alpha: 0.08),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF70aaff).withValues(alpha: 0.1),
+                    color: cs.secondary.withValues(alpha: 0.08),
                     blurRadius: 100,
                     spreadRadius: 50,
                   ),
@@ -116,24 +117,24 @@ class _SplashScreenState extends State<SplashScreen> {
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.3)),
+                      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          AppTheme.primary.withValues(alpha: 0.2),
-                          const Color(0xFF599cf9).withValues(alpha: 0.1),
+                          cs.primary.withValues(alpha: 0.18),
+                          cs.tertiary.withValues(alpha: 0.10),
                         ],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          color: cs.primary.withValues(alpha: 0.10),
                           blurRadius: 40,
                           spreadRadius: 10,
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.lens_blur, size: 60, color: AppTheme.primary),
+                    child: Icon(Icons.lens_blur, size: 60, color: cs.primary),
                   )
                   .animate()
                   .scale(duration: 1.seconds, curve: Curves.elasticOut)
@@ -144,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   Text(
                     'Welcome to\nthe Archive',
                     textAlign: TextAlign.center,
-                    style: AppTheme.headingStyle.copyWith(
+                    style: AppTheme.headingStyle(context).copyWith(
                       fontSize: 40,
                       letterSpacing: -1.0,
                       height: 1.1,
@@ -157,9 +158,9 @@ class _SplashScreenState extends State<SplashScreen> {
                   Text(
                     'Experience your memories through\na modern, reels-style lens.',
                     textAlign: TextAlign.center,
-                    style: AppTheme.bodyStyle.copyWith(
+                    style: AppTheme.bodyStyle(context).copyWith(
                       fontSize: 16,
-                      color: AppTheme.onSurfaceVariant,
+                      color: cs.onSurfaceVariant,
                       height: 1.5,
                     ),
                   ).animate().fadeIn(delay: 1.seconds).slideY(begin: 0.5),

@@ -30,14 +30,14 @@ class _PermissionScreenState extends State<PermissionScreen> {
     } else {
       // Show custom permission denied screen with Settings deep-link
       if (mounted) {
+        final cs = Theme.of(context).colorScheme;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1a1030),
-            title: Text('Permission Denied', style: AppTheme.headingStyle),
+            title: Text('Permission denied', style: AppTheme.headingStyle(context)),
             content: Text(
               'Gallery Reels needs photo access to help you clean your gallery. Please enable it in settings.',
-              style: AppTheme.bodyStyle,
+              style: AppTheme.bodyStyle(context),
             ),
             actions: [
               TextButton(
@@ -49,7 +49,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   PhotoManager.openSetting();
                   Navigator.pop(context);
                 },
-                child: const Text('Settings', style: TextStyle(color: AppTheme.accentColor)),
+                child: Text('Settings', style: TextStyle(color: cs.primary)),
               ),
             ],
           ),
@@ -60,16 +60,17 @@ class _PermissionScreenState extends State<PermissionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       body: Container(
-        decoration: AppTheme.backgroundGradient,
+        color: cs.surface,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Hero(
               tag: 'app_logo',
-              child: Icon(Icons.photo_library_outlined, size: 80, color: AppTheme.accentColor),
+              child: Icon(Icons.photo_library_outlined, size: 80),
             ),
             const SizedBox(height: 40),
             GlassCard(
@@ -78,13 +79,13 @@ class _PermissionScreenState extends State<PermissionScreen> {
                 children: [
                   Text(
                     'Photo Access',
-                    style: AppTheme.headingStyle.copyWith(fontSize: 24),
+                    style: AppTheme.headingStyle(context).copyWith(fontSize: 24),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'To start cleaning your gallery, we need permission to view and organize your photos directly on your device.',
                     textAlign: TextAlign.center,
-                    style: AppTheme.bodyStyle,
+                    style: AppTheme.bodyStyle(context),
                   ),
                   const SizedBox(height: 32),
                   SizedBox(
@@ -93,7 +94,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                     child: ElevatedButton(
                       onPressed: _loading ? null : _requestPermissions,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accentColor,
+                        backgroundColor: cs.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),

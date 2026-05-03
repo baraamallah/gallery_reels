@@ -15,15 +15,15 @@ final navTabProvider = NavTabNotifierProvider._();
 final class NavTabNotifierProvider
     extends $NotifierProvider<NavTabNotifier, NavTab> {
   NavTabNotifierProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'navTabProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'navTabProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
   String debugGetCreateSourceHash() => _$navTabNotifierHash();
@@ -49,14 +49,8 @@ abstract class _$NavTabNotifier extends $Notifier<NavTab> {
   @override
   void runBuild() {
     final ref = this.ref as $Ref<NavTab, NavTab>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<NavTab, NavTab>,
-              NavTab,
-              Object?,
-              Object?
-            >;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<NavTab, NavTab>, NavTab, Object?, Object?>;
     element.handleCreate(ref, build);
   }
 }

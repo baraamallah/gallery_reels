@@ -104,6 +104,12 @@ class DatabaseService {
     );
   }
 
+  Future<Set<String>> getTrashedPhotoIds() async {
+    final db = await instance.database;
+    final rows = await db.query('deleted_photos', columns: ['photo_id']);
+    return rows.map((r) => r['photo_id'] as String).toSet();
+  }
+
   Future<int> getTotalSpaceFreed() async {
     final db = await instance.database;
     final result = await db.rawQuery('SELECT SUM(file_size) as total FROM deleted_photos WHERE restored = 0');
@@ -121,6 +127,15 @@ class DatabaseService {
     final newStats = {'date': date, 'reviewed': 0, 'deleted': 0, 'space_freed': 0};
     await db.insert('daily_stats', newStats);
     return newStats;
+  }
+
+  Future<Map<String, dynamic>> getLifetimeStats() async {
+    final db = await instance.database;
+    final result = await db.rawQuery('SELECT SUM(reviewed) as reviewed, SUM(deleted) as deleted, SUM(space_freed) as space_freed FROM daily_stats');
+    if (result.isNotEmpty && result.first['reviewed'] != null) {
+      return result.first;
+    }
+    return {'reviewed': 0, 'deleted': 0, 'space_freed': 0};
   }
 
   Future<void> updateStats({int? reviewed, int? deleted, int? spaceFreed}) async {

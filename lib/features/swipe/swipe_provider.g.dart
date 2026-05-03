@@ -14,15 +14,15 @@ final swipeIndexProvider = SwipeIndexProvider._();
 
 final class SwipeIndexProvider extends $NotifierProvider<SwipeIndex, int> {
   SwipeIndexProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'swipeIndexProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'swipeIndexProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
   String debugGetCreateSourceHash() => _$swipeIndexHash();
@@ -48,14 +48,8 @@ abstract class _$SwipeIndex extends $Notifier<int> {
   @override
   void runBuild() {
     final ref = this.ref as $Ref<int, int>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<int, int>,
-              int,
-              Object?,
-              Object?
-            >;
+    final element = ref.element
+        as $ClassProviderElement<AnyNotifier<int, int>, int, Object?, Object?>;
     element.handleCreate(ref, build);
   }
 }
@@ -66,15 +60,15 @@ final selectedAlbumProvider = SelectedAlbumProvider._();
 final class SelectedAlbumProvider
     extends $NotifierProvider<SelectedAlbum, AssetPathEntity?> {
   SelectedAlbumProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'selectedAlbumProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'selectedAlbumProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
   String debugGetCreateSourceHash() => _$selectedAlbumHash();
@@ -100,41 +94,40 @@ abstract class _$SelectedAlbum extends $Notifier<AssetPathEntity?> {
   @override
   void runBuild() {
     final ref = this.ref as $Ref<AssetPathEntity?, AssetPathEntity?>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<AssetPathEntity?, AssetPathEntity?>,
-              AssetPathEntity?,
-              Object?,
-              Object?
-            >;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AssetPathEntity?, AssetPathEntity?>,
+        AssetPathEntity?,
+        Object?,
+        Object?>;
     element.handleCreate(ref, build);
   }
 }
 
+/// Albums list used by the Editor (filtered by Editor's mediaMode).
+
 @ProviderFor(albums)
 final albumsProvider = AlbumsProvider._();
 
-final class AlbumsProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<AssetPathEntity>>,
-          List<AssetPathEntity>,
-          FutureOr<List<AssetPathEntity>>
-        >
+/// Albums list used by the Editor (filtered by Editor's mediaMode).
+
+final class AlbumsProvider extends $FunctionalProvider<
+        AsyncValue<List<AssetPathEntity>>,
+        List<AssetPathEntity>,
+        FutureOr<List<AssetPathEntity>>>
     with
         $FutureModifier<List<AssetPathEntity>>,
         $FutureProvider<List<AssetPathEntity>> {
+  /// Albums list used by the Editor (filtered by Editor's mediaMode).
   AlbumsProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'albumsProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'albumsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
   String debugGetCreateSourceHash() => _$albumsHash();
@@ -142,8 +135,8 @@ final class AlbumsProvider
   @$internal
   @override
   $FutureProviderElement<List<AssetPathEntity>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
 
   @override
   FutureOr<List<AssetPathEntity>> create(Ref ref) {
@@ -151,48 +144,164 @@ final class AlbumsProvider
   }
 }
 
-String _$albumsHash() => r'332eaf9512d1809887facefa7b0b6d2b84c050e1';
+String _$albumsHash() => r'f2daaff8a70c04657ad19954faa615c1716fc2c2';
 
-@ProviderFor(photoList)
-final photoListProvider = PhotoListProvider._();
+/// Albums list used exclusively by the Reels settings (filtered by Reels' own mediaMode).
 
-final class PhotoListProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<AssetEntity>>,
-          List<AssetEntity>,
-          FutureOr<List<AssetEntity>>
-        >
+@ProviderFor(reelsAlbums)
+final reelsAlbumsProvider = ReelsAlbumsProvider._();
+
+/// Albums list used exclusively by the Reels settings (filtered by Reels' own mediaMode).
+
+final class ReelsAlbumsProvider extends $FunctionalProvider<
+        AsyncValue<List<AssetPathEntity>>,
+        List<AssetPathEntity>,
+        FutureOr<List<AssetPathEntity>>>
+    with
+        $FutureModifier<List<AssetPathEntity>>,
+        $FutureProvider<List<AssetPathEntity>> {
+  /// Albums list used exclusively by the Reels settings (filtered by Reels' own mediaMode).
+  ReelsAlbumsProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'reelsAlbumsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$reelsAlbumsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<AssetPathEntity>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<AssetPathEntity>> create(Ref ref) {
+    return reelsAlbums(ref);
+  }
+}
+
+String _$reelsAlbumsHash() => r'22a149e2404808eb5e965bfcf856255db1291b7f';
+
+@ProviderFor(editorAssetList)
+final editorAssetListProvider = EditorAssetListProvider._();
+
+final class EditorAssetListProvider extends $FunctionalProvider<
+        AsyncValue<List<AssetEntity>>,
+        List<AssetEntity>,
+        FutureOr<List<AssetEntity>>>
     with
         $FutureModifier<List<AssetEntity>>,
         $FutureProvider<List<AssetEntity>> {
-  PhotoListProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'photoListProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+  EditorAssetListProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'editorAssetListProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
-  String debugGetCreateSourceHash() => _$photoListHash();
+  String debugGetCreateSourceHash() => _$editorAssetListHash();
 
   @$internal
   @override
   $FutureProviderElement<List<AssetEntity>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
 
   @override
   FutureOr<List<AssetEntity>> create(Ref ref) {
-    return photoList(ref);
+    return editorAssetList(ref);
   }
 }
 
-String _$photoListHash() => r'b5be37637e975ec9bb3b94919884fc98bfa7a958';
+String _$editorAssetListHash() => r'fa3a43d3786f546baa64f4cf8ad112f1d69ec831';
+
+@ProviderFor(reelsAssetList)
+final reelsAssetListProvider = ReelsAssetListProvider._();
+
+final class ReelsAssetListProvider extends $FunctionalProvider<
+        AsyncValue<List<AssetEntity>>,
+        List<AssetEntity>,
+        FutureOr<List<AssetEntity>>>
+    with
+        $FutureModifier<List<AssetEntity>>,
+        $FutureProvider<List<AssetEntity>> {
+  ReelsAssetListProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'reelsAssetListProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$reelsAssetListHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<AssetEntity>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<AssetEntity>> create(Ref ref) {
+    return reelsAssetList(ref);
+  }
+}
+
+String _$reelsAssetListHash() => r'cdb59546d1da6d4db49fc4e6dc15346be02a760d';
+
+@ProviderFor(favoriteAssetList)
+final favoriteAssetListProvider = FavoriteAssetListProvider._();
+
+final class FavoriteAssetListProvider extends $FunctionalProvider<
+        AsyncValue<List<AssetEntity>>,
+        List<AssetEntity>,
+        FutureOr<List<AssetEntity>>>
+    with
+        $FutureModifier<List<AssetEntity>>,
+        $FutureProvider<List<AssetEntity>> {
+  FavoriteAssetListProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'favoriteAssetListProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$favoriteAssetListHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<AssetEntity>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<AssetEntity>> create(Ref ref) {
+    return favoriteAssetList(ref);
+  }
+}
+
+String _$favoriteAssetListHash() => r'6246ee06f7c4c5095d86daf42869364261c71467';
 
 @ProviderFor(UndoStack)
 final undoStackProvider = UndoStackProvider._();
@@ -200,15 +309,15 @@ final undoStackProvider = UndoStackProvider._();
 final class UndoStackProvider
     extends $NotifierProvider<UndoStack, List<SwipeAction>> {
   UndoStackProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'undoStackProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'undoStackProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
   String debugGetCreateSourceHash() => _$undoStackHash();
@@ -234,14 +343,11 @@ abstract class _$UndoStack extends $Notifier<List<SwipeAction>> {
   @override
   void runBuild() {
     final ref = this.ref as $Ref<List<SwipeAction>, List<SwipeAction>>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<List<SwipeAction>, List<SwipeAction>>,
-              List<SwipeAction>,
-              Object?,
-              Object?
-            >;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<List<SwipeAction>, List<SwipeAction>>,
+        List<SwipeAction>,
+        Object?,
+        Object?>;
     element.handleCreate(ref, build);
   }
 }

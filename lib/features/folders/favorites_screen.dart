@@ -7,56 +7,54 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../shared/widgets/media_viewer.dart';
 import '../swipe/swipe_provider.dart';
 
-class FoldersScreen extends ConsumerWidget {
-  const FoldersScreen({super.key});
+class FavoritesScreen extends ConsumerWidget {
+  const FavoritesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final albumsAsync = ref.watch(albumsProvider);
-    final selected = ref.watch(selectedAlbumProvider);
-    final assetsAsync = ref.watch(editorAssetListProvider);
+    final assetsAsync = ref.watch(favoriteAssetListProvider);
     final topPadding = MediaQuery.of(context).padding.top + 64;
 
     return Column(
       children: [
         SizedBox(height: topPadding),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              const Text('Album: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              Expanded(
-                child: albumsAsync.when(
-                  data: (albums) {
-                    if (albums.isEmpty) return const Text('No albums');
-                    final value = selected?.id ?? '';
-                    return DropdownButton<String>(
-                      isExpanded: true,
-                      value: albums.any((a) => a.id == value) ? value : '',
-                      underline: const SizedBox.shrink(),
-                      onChanged: (id) {
-                        if (id == null) return;
-                        final album = id == '' ? null : albums.firstWhere((a) => a.id == id);
-                        ref.read(selectedAlbumProvider.notifier).setAlbum(album);
-                      },
-                      items: [
-                        const DropdownMenuItem(value: '', child: Text('All Included')),
-                        ...albums.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))),
-                      ],
-                    );
-                  },
-                  loading: () => const Text('Loading...'),
-                  error: (_, __) => const Text('Error loading albums'),
-                ),
+        assetsAsync.when(
+          data: (assets) => assets.isEmpty 
+            ? const SizedBox.shrink()
+            : Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.auto_awesome, size: 16, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${assets.length} favorites',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ).animate(key: ValueKey(assets.length)).fadeIn().scale(begin: const Offset(0.8, 0.8)),
               ),
-            ],
-          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
         ),
         Expanded(
           child: assetsAsync.when(
             data: (assets) {
               if (assets.isEmpty) {
-                return const Center(child: Text('No media found'));
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.favorite_border, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                      const SizedBox(height: 16),
+                      const Text('No favorites yet'),
+                    ],
+                  ).animate().fadeIn().scale(),
+                );
               }
               return GridView.builder(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 80),
@@ -106,10 +104,17 @@ class FoldersScreen extends ConsumerWidget {
                                 child: Icon(Icons.videocam_rounded, color: Colors.white, size: 18),
                               ),
                             ),
+                          const Align(
+                            alignment: Alignment.topRight,
+                            child: Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.favorite, color: Colors.red, size: 16),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  );
+                  ).animate().fadeIn(delay: (i * 50).ms, duration: 300.ms).moveY(begin: 20, end: 0);
                 },
               );
             },
@@ -121,4 +126,3 @@ class FoldersScreen extends ConsumerWidget {
     );
   }
 }
-

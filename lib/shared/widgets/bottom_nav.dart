@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:ui';
+import '../../core/app_settings.dart';
 import '../providers/nav_provider.dart';
-import '../../core/theme.dart';
 
 class FloatingBottomNav extends ConsumerWidget {
   const FloatingBottomNav({super.key});
@@ -12,7 +12,11 @@ class FloatingBottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(navTabProvider);
+    final settings = ref.watch(appSettingsProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final cs = Theme.of(context).colorScheme;
+
+    final showTrash = settings.deleteMode == DeleteMode.inAppTrash;
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -22,7 +26,7 @@ class FloatingBottomNav extends ConsumerWidget {
           height: 80 + bottomPadding,
           padding: EdgeInsets.only(bottom: bottomPadding),
           decoration: BoxDecoration(
-            color: const Color(0xFF171A1E).withValues(alpha: 0.6),
+            color: cs.surface.withValues(alpha: 0.85),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.3),
@@ -53,17 +57,24 @@ class FloatingBottomNav extends ConsumerWidget {
                 isActive: currentTab == NavTab.reels,
               ),
               _NavIcon(
+                tab: NavTab.favorites,
+                icon: PhosphorIcons.heart(),
+                fillIcon: PhosphorIcons.heart(),
+                isActive: currentTab == NavTab.favorites,
+              ),
+              _NavIcon(
                 tab: NavTab.folders,
                 icon: PhosphorIcons.folder(),
                 fillIcon: PhosphorIcons.folder(),
                 isActive: currentTab == NavTab.folders,
               ),
-              _NavIcon(
-                tab: NavTab.trash,
-                icon: PhosphorIcons.trash(),
-                fillIcon: PhosphorIcons.trash(),
-                isActive: currentTab == NavTab.trash,
-              ),
+              if (showTrash)
+                _NavIcon(
+                  tab: NavTab.trash,
+                  icon: PhosphorIcons.trash(),
+                  fillIcon: PhosphorIcons.trash(),
+                  isActive: currentTab == NavTab.trash,
+                ),
             ],
           ),
         ),
@@ -87,20 +98,21 @@ class _NavIcon extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
         ref.read(navTabProvider.notifier).setTab(tab);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? AppTheme.primary.withValues(alpha: 0.2) : Colors.transparent,
+          color: isActive ? cs.primary.withValues(alpha: 0.16) : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
         ),
         child: PhosphorIcon(
           isActive ? fillIcon : icon,
-          color: isActive ? AppTheme.primary : AppTheme.onSurface.withValues(alpha: 0.4),
+          color: isActive ? cs.primary : cs.onSurface.withValues(alpha: 0.5),
           size: 24,
         ),
       ).animate(target: isActive ? 1 : 0).scale(
