@@ -14,7 +14,7 @@ class SwipeIndex extends _$SwipeIndex {
   @override
   int build() {
     // Watch only the index-specific provider to avoid rebuilding on every setting change
-    return ref.watch(lastSwipeIndexProvider);
+    return ref.watch(lastCleanSessionIndexProvider);
   }
 
   void next() {
@@ -38,7 +38,7 @@ class SwipeIndex extends _$SwipeIndex {
   }
 
   Future<void> _persist() async {
-    await ref.read(appSettingsProvider.notifier).setLastSwipeIndex(state);
+    await ref.read(appSettingsProvider.notifier).setLastCleanSessionIndex(state);
   }
 }
 
@@ -192,8 +192,8 @@ Future<List<AssetEntity>> favoriteAssetList(Ref ref) async {
   return favorites;
 }
 
-final lastSwipeIndexProvider = Provider<int>((ref) {
-  return ref.watch(appSettingsProvider).lastSwipeIndex;
+final lastCleanSessionIndexProvider = Provider<int>((ref) {
+  return ref.watch(appSettingsProvider).lastCleanSessionIndex;
 });
 
 final _fetchConfigProvider = Provider.family<({

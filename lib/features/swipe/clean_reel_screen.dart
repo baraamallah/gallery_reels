@@ -37,7 +37,33 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
   @override
   void initState() {
     super.initState();
-    _index = ref.read(swipeIndexProvider);
+    final settings = ref.read(appSettingsProvider);
+    final currentHash = settings.editorFiltersHash;
+    LogService.instance.info('CleanReelScreen: lastHash=${settings.lastCleanSessionFiltersHash}, currentHash=$currentHash');
+
+    if (settings.lastCleanSessionFiltersHash != currentHash) {
+      LogService.instance.info('CleanReelScreen: Filters changed! Resetting session.');
+      _index = 0;
+      _decisionsThisSession = 0;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(appSettingsProvider.notifier).resetSessionState(currentHash);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Filters changed - position reset'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      });
+    } else {
+      LogService.instance.info('CleanReelScreen: Resuming session at index ${settings.lastCleanSessionIndex}');
+      _index = settings.lastCleanSessionIndex;
+      _decisionsThisSession = settings.lastCleanSessionDecisions;
+    }
+
     _pageController = PageController(initialPage: _index);
     _confettiController = ConfettiController(duration: const Duration(seconds: 1));
   }
@@ -336,6 +362,7 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
 
   void _handleDecision() {
     _decisionsThisSession++;
+    ref.read(appSettingsProvider.notifier).setLastCleanSessionDecisions(_decisionsThisSession);
     if (_decisionsThisSession % 20 == 0) {
       _confettiController.play();
     }

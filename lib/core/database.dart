@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'log_service.dart';
 
 class DatabaseService {
   static final DatabaseService instance = DatabaseService._init();
@@ -23,6 +24,7 @@ class DatabaseService {
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
+          LogService.instance.info('Upgrading database to version 2');
           await db.execute('ALTER TABLE daily_stats ADD COLUMN liked INTEGER DEFAULT 0');
         }
       },
@@ -170,9 +172,9 @@ class DatabaseService {
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      print('DB: Tagged photo $photoId with tag $tagId (row: $result)');
-    } catch (e) {
-      print('DB ERROR: Failed to tag photo $photoId: $e');
+      LogService.instance.info('DB: Tagged photo $photoId with tag $tagId (row: $result)');
+    } catch (e, s) {
+      LogService.instance.error('DB ERROR: Failed to tag photo $photoId: $e', e, s);
     }
   }
 
@@ -206,7 +208,7 @@ class DatabaseService {
       orderBy: 'tagged_at DESC',
     );
     final ids = result.map((r) => r['photo_id'] as String).toList();
-    print('DB: Found ${ids.length} photos for tag $tagId: $ids');
+    LogService.instance.info('DB: Found ${ids.length} photos for tag $tagId');
     return ids;
   }
 }

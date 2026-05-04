@@ -45,7 +45,9 @@ class AppSettings {
   final DateTime? reelsEndDate;   // new
   final bool enableLibrary;      // new
   final int loadLimit;           // new
-  final int lastSwipeIndex;      // new
+  final int lastCleanSessionIndex;
+  final int lastCleanSessionDecisions;
+  final String lastCleanSessionFiltersHash;
 
   const AppSettings({
     required this.themeMode,
@@ -63,7 +65,9 @@ class AppSettings {
     this.reelsEndDate,
     this.enableLibrary = true,
     this.loadLimit = 1000,
-    this.lastSwipeIndex = 0,
+    this.lastCleanSessionIndex = 0,
+    this.lastCleanSessionDecisions = 0,
+    this.lastCleanSessionFiltersHash = '',
   });
 
   factory AppSettings.defaults() => const AppSettings(
@@ -82,7 +86,9 @@ class AppSettings {
         reelsEndDate: null,
         enableLibrary: true,
         loadLimit: 1000,
-        lastSwipeIndex: 0,
+        lastCleanSessionIndex: 0,
+        lastCleanSessionDecisions: 0,
+        lastCleanSessionFiltersHash: '',
       );
 
   AppSettings copyWith({
@@ -101,7 +107,9 @@ class AppSettings {
     Object? reelsEndDate = _sentinel,
     bool? enableLibrary,
     int? loadLimit,
-    int? lastSwipeIndex,
+    int? lastCleanSessionIndex,
+    int? lastCleanSessionDecisions,
+    String? lastCleanSessionFiltersHash,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -119,7 +127,9 @@ class AppSettings {
       reelsEndDate: reelsEndDate == _sentinel ? this.reelsEndDate : reelsEndDate as DateTime?,
       enableLibrary: enableLibrary ?? this.enableLibrary,
       loadLimit: loadLimit ?? this.loadLimit,
-      lastSwipeIndex: lastSwipeIndex ?? this.lastSwipeIndex,
+      lastCleanSessionIndex: lastCleanSessionIndex ?? this.lastCleanSessionIndex,
+      lastCleanSessionDecisions: lastCleanSessionDecisions ?? this.lastCleanSessionDecisions,
+      lastCleanSessionFiltersHash: lastCleanSessionFiltersHash ?? this.lastCleanSessionFiltersHash,
     );
   }
 
@@ -140,8 +150,15 @@ class AppSettings {
       'reelsEndDate': reelsEndDate?.millisecondsSinceEpoch,
       'enableLibrary': enableLibrary,
       'loadLimit': loadLimit,
-      'lastSwipeIndex': lastSwipeIndex,
+      'lastCleanSessionIndex': lastCleanSessionIndex,
+      'lastCleanSessionDecisions': lastCleanSessionDecisions,
+      'lastCleanSessionFiltersHash': lastCleanSessionFiltersHash,
     };
+  }
+
+  String get editorFiltersHash {
+    final sortedIds = [...includedAlbumIds]..sort();
+    return '${mediaMode.name}-${sortMode.name}-${sortedIds.join(',')}-$minSizeEditor-$loadLimit';
   }
 
   factory AppSettings.fromMap(Map<String, dynamic> map) {
@@ -199,7 +216,9 @@ class AppSettings {
       reelsEndDate: parseDate(map['reelsEndDate']),
       enableLibrary: map['enableLibrary'] as bool? ?? true,
       loadLimit: map['loadLimit'] as int? ?? 1000,
-      lastSwipeIndex: map['lastSwipeIndex'] as int? ?? 0,
+      lastCleanSessionIndex: map['lastCleanSessionIndex'] as int? ?? 0,
+      lastCleanSessionDecisions: map['lastCleanSessionDecisions'] as int? ?? 0,
+      lastCleanSessionFiltersHash: map['lastCleanSessionFiltersHash'] as String? ?? '',
     );
   }
 }
@@ -323,8 +342,28 @@ class AppSettingsController extends Notifier<AppSettings> {
     await _persist();
   }
 
-  Future<void> setLastSwipeIndex(int index) async {
-    state = state.copyWith(lastSwipeIndex: index);
+  Future<void> setLastCleanSessionIndex(int index) async {
+    state = state.copyWith(lastCleanSessionIndex: index);
+    await _persist();
+  }
+
+  Future<void> setLastCleanSessionDecisions(int count) async {
+    state = state.copyWith(lastCleanSessionDecisions: count);
+    await _persist();
+  }
+
+  Future<void> setLastCleanSessionFiltersHash(String hash) async {
+    state = state.copyWith(lastCleanSessionFiltersHash: hash);
+    await _persist();
+  }
+
+  Future<void> resetSessionState(String newHash) async {
+    LogService.instance.info('Resetting session state with hash: $newHash');
+    state = state.copyWith(
+      lastCleanSessionIndex: 0,
+      lastCleanSessionDecisions: 0,
+      lastCleanSessionFiltersHash: newHash,
+    );
     await _persist();
   }
 }
