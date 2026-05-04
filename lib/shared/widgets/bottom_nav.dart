@@ -62,12 +62,13 @@ class FloatingBottomNav extends ConsumerWidget {
                 fillIcon: PhosphorIcons.heart(),
                 isActive: currentTab == NavTab.favorites,
               ),
-              _NavIcon(
-                tab: NavTab.folders,
-                icon: PhosphorIcons.folder(),
-                fillIcon: PhosphorIcons.folder(),
-                isActive: currentTab == NavTab.folders,
-              ),
+              if (settings.enableLibrary)
+                _NavIcon(
+                  tab: NavTab.folders,
+                  icon: PhosphorIcons.folder(),
+                  fillIcon: PhosphorIcons.folder(),
+                  isActive: currentTab == NavTab.folders,
+                ),
               if (showTrash)
                 _NavIcon(
                   tab: NavTab.trash,

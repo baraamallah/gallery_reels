@@ -2,19 +2,44 @@ import 'package:flutter/foundation.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../../shared/models/swipe_models.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_settings.dart';
 import '../../core/database.dart';
+import '../../core/log_service.dart';
 
 part 'swipe_provider.g.dart';
 
 @riverpod
 class SwipeIndex extends _$SwipeIndex {
   @override
-  int build() => 0;
+  int build() {
+    // Watch only the index-specific provider to avoid rebuilding on every setting change
+    return ref.watch(lastSwipeIndexProvider);
+  }
 
-  void next() => state = state + 1;
-  void previous() => state = state > 0 ? state - 1 : 0;
-  void reset() => state = 0;
+  void next() {
+    state = state + 1;
+    _persist();
+  }
+
+  void previous() {
+    state = state > 0 ? state - 1 : 0;
+    _persist();
+  }
+
+  void reset() {
+    state = 0;
+    _persist();
+  }
+
+  void jumpTo(int index) {
+    state = index;
+    _persist();
+  }
+
+  Future<void> _persist() async {
+    await ref.read(appSettingsProvider.notifier).setLastSwipeIndex(state);
+  }
 }
 
 @riverpod
@@ -66,54 +91,158 @@ Future<List<AssetEntity>> favoriteAssetList(Ref ref) async {
   final List<AssetEntity> favorites = [];
   final Set<String> processedIds = {};
 
-  // 1. Get in-app favorites from DB
-  final favoriteIds = await DatabaseService.instance.getPhotosByTag('2');
-  for (final id in favoriteIds) {
-    final asset = await AssetEntity.fromId(id);
-    if (asset != null) {
-      favorites.add(asset);
-      processedIds.add(asset.id);
-    }
-  }
+  try {
+    // 1. Get in-app favorites from DB (Primary Source)
+    final favoriteIds = await DatabaseService.instance.getPhotosByTag('2');
+    LogService.instance.info('Found ${favoriteIds.length} favorited IDs in database');
+    
+    if (favoriteIds.isNotEmpty) {
+      // Resolve IDs in batches to be efficient
+      final List<AssetEntity?> inAppAssets = await Future.wait(
+        favoriteIds.map((id) => AssetEntity.fromId(id))
+      );
+      
+      final List<String> failedIds = [];
+      for (int i = 0; i < inAppAssets.length; i++) {
+        final asset = inAppAssets[i];
+        if (asset != null) {
+          favorites.add(asset);
+          processedIds.add(asset.id);
+        } else {
+          failedIds.add(favoriteIds[i]);
+        }
+      }
 
-  // 2. Also include system favorites (OS-level)
-  final List<AssetPathEntity> all = await PhotoManager.getAssetPathList(type: RequestType.common);
-  for (final album in all) {
-    if (album.isAll) {
-      final count = await album.assetCountAsync;
-      // Fetch in batches to be efficient
-      for (int i = 0; i < count; i += 1000) {
-        final assets = await album.getAssetListRange(start: i, end: i + 1000);
+      if (failedIds.isNotEmpty) {
+        LogService.instance.warn('${failedIds.length} assets failed resolution by ID. Attempting deep scan fallback...');
+        // Fallback: Scan "All" album for these IDs specifically
+        final List<AssetPathEntity> allAlbums = await PhotoManager.getAssetPathList(type: RequestType.common);
+        AssetPathEntity? allAlbum;
+        for (final album in allAlbums) {
+          if (album.isAll) {
+            allAlbum = album;
+            break;
+          }
+        }
+
+        if (allAlbum != null) {
+          final count = await allAlbum.assetCountAsync;
+          // Deep scan up to 10k items for missing favorites
+          final take = count > 10000 ? 10000 : count;
+          final scanAssets = await allAlbum.getAssetListRange(start: 0, end: take);
+          final failedSet = failedIds.toSet();
+          
+          for (final a in scanAssets) {
+            if (failedSet.contains(a.id) && !processedIds.contains(a.id)) {
+              favorites.add(a);
+              processedIds.add(a.id);
+              LogService.instance.info('Recovered asset ${a.id} via deep scan');
+            }
+          }
+        }
+      }
+      LogService.instance.info('Successfully resolved ${processedIds.length} out of ${favoriteIds.length} assets from database');
+    }
+
+    // 2. Include system favorites (OS-level synchronization)
+    final List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(type: RequestType.common);
+    
+    // Check for "Favorites" album
+    AssetPathEntity? systemFavAlbum;
+    for (final album in albums) {
+      final name = album.name.toLowerCase();
+      if (name == 'favorites' || name == 'favourites' || album.name == '收藏' || album.name == 'Favoritos') {
+        systemFavAlbum = album;
+        break;
+      }
+    }
+
+    if (systemFavAlbum != null) {
+      final count = await systemFavAlbum.assetCountAsync;
+      final assets = await systemFavAlbum.getAssetListRange(start: 0, end: count);
+      for (final a in assets) {
+        if (!processedIds.contains(a.id)) {
+          favorites.add(a);
+          processedIds.add(a.id);
+        }
+      }
+    }
+
+    // Fallback: Always check if a.isFavorite is true in the recent items of "All" album
+    for (final album in albums) {
+      if (album.isAll) {
+        final count = await album.assetCountAsync;
+        final take = count > 2000 ? 2000 : count;
+        final assets = await album.getAssetListRange(start: 0, end: take);
         for (final a in assets) {
           if (a.isFavorite && !processedIds.contains(a.id)) {
             favorites.add(a);
             processedIds.add(a.id);
           }
         }
+        break;
       }
-      break;
     }
+  } catch (e, s) {
+    LogService.instance.error('Error loading favorites: $e', e, s);
   }
 
+  // Sort by creation date (newest first)
   favorites.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
   return favorites;
 }
 
+final lastSwipeIndexProvider = Provider<int>((ref) {
+  return ref.watch(appSettingsProvider).lastSwipeIndex;
+});
+
+final _fetchConfigProvider = Provider.family<({
+  MediaMode mediaMode,
+  SortMode sortMode,
+  List<String> includedIds,
+  int? minSize,
+  int? maxSize,
+  DateTime? startDate,
+  DateTime? endDate,
+  int loadLimit,
+}), bool>((ref, isEditor) {
+  final s = ref.watch(appSettingsProvider);
+  if (isEditor) {
+    return (
+      mediaMode: s.mediaMode,
+      sortMode: s.sortMode,
+      includedIds: s.includedAlbumIds,
+      minSize: s.minSizeEditor,
+      maxSize: null,
+      startDate: null,
+      endDate: null,
+      loadLimit: s.loadLimit,
+    );
+  } else {
+    return (
+      mediaMode: s.reelsMediaMode,
+      sortMode: s.reelsSortMode,
+      includedIds: s.reelsIncludedAlbumIds,
+      minSize: s.minSizeReels,
+      maxSize: s.maxSizeReels,
+      startDate: s.reelsStartDate,
+      endDate: s.reelsEndDate,
+      loadLimit: s.loadLimit,
+    );
+  }
+});
+
 Future<List<AssetEntity>> _fetchAssets(Ref ref, {required bool isEditor}) async {
   if (kIsWeb) return [];
-  final settings = ref.watch(appSettingsProvider);
+  
+  // Watch the granular config provider. Since it returns a Record, 
+  // this will only re-run if the actual filter values change.
+  final config = ref.watch(_fetchConfigProvider(isEditor));
+
   final PermissionState ps = await PhotoManager.requestPermissionExtend();
   if (!ps.isAuth && ps != PermissionState.limited) return [];
 
-  final mediaMode = isEditor ? settings.mediaMode : settings.reelsMediaMode;
-  final sortMode = isEditor ? settings.sortMode : settings.reelsSortMode;
-  final includedIds = isEditor ? settings.includedAlbumIds : settings.reelsIncludedAlbumIds;
-  final minSize = isEditor ? settings.minSizeEditor : settings.minSizeReels;
-  final maxSize = isEditor ? null : settings.maxSizeReels;
-  final startDate = isEditor ? null : settings.reelsStartDate;
-  final endDate = isEditor ? null : settings.reelsEndDate;
-
-  final type = _requestTypeFor(mediaMode);
+  final type = _requestTypeFor(config.mediaMode);
 
   // If editor and an album is explicitly selected in Folders tab, use that.
   if (isEditor) {
@@ -121,26 +250,27 @@ Future<List<AssetEntity>> _fetchAssets(Ref ref, {required bool isEditor}) async 
     if (selectedAlbum != null) {
       final count = await selectedAlbum.assetCountAsync;
       final assets = await selectedAlbum.getAssetListRange(start: 0, end: count);
-      return await _filterAndSort(assets, sortMode, minSize, maxSize, startDate, endDate);
+      return await _filterAndSort(assets, config.sortMode, config.minSize, config.maxSize, config.startDate, config.endDate);
     }
   }
 
   final List<AssetPathEntity> all = await PhotoManager.getAssetPathList(type: type);
   if (all.isEmpty) return [];
 
-  final selectedIds = includedIds.toSet();
+  final selectedIds = config.includedIds.toSet();
   final albumsFiltered = selectedIds.isEmpty ? all : all.where((a) => selectedIds.contains(a.id)).toList();
   if (albumsFiltered.isEmpty) return [];
 
   final List<AssetEntity> combined = [];
   for (final album in albumsFiltered) {
     final count = await album.assetCountAsync;
-    final take = count > 5000 ? 5000 : count;
+    // Use user-defined load limit for better performance ("importing in parts")
+    final take = count > config.loadLimit ? config.loadLimit : count;
     if (take <= 0) continue;
     combined.addAll(await album.getAssetListRange(start: 0, end: take));
   }
 
-  return await _filterAndSort(combined, sortMode, minSize, maxSize, startDate, endDate);
+  return await _filterAndSort(combined, config.sortMode, config.minSize, config.maxSize, config.startDate, config.endDate);
 }
 
 Future<List<AssetEntity>> _filterAndSort(

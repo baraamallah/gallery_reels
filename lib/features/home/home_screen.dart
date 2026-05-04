@@ -63,6 +63,7 @@ class HomeScreen extends ConsumerWidget {
                   title: 'Today',
                   reviewed: today['reviewed'] ?? 0,
                   deleted: today['deleted'] ?? 0,
+                  liked: today['liked'] ?? 0,
                   space: _formatBytes(today['space_freed'] ?? 0),
                   color: Theme.of(context).colorScheme.primaryContainer,
                 ),
@@ -71,6 +72,7 @@ class HomeScreen extends ConsumerWidget {
                   title: 'Lifetime',
                   reviewed: lifetime['reviewed'] ?? 0,
                   deleted: lifetime['deleted'] ?? 0,
+                  liked: lifetime['liked'] ?? 0,
                   space: _formatBytes(lifetime['space_freed'] ?? 0),
                   color: Theme.of(context).colorScheme.secondaryContainer,
                 ),
@@ -87,6 +89,7 @@ class _StatsCard extends StatelessWidget {
   final String title;
   final int reviewed;
   final int deleted;
+  final int liked;
   final String space;
   final Color color;
 
@@ -94,6 +97,7 @@ class _StatsCard extends StatelessWidget {
     required this.title,
     required this.reviewed,
     required this.deleted,
+    required this.liked,
     required this.space,
     required this.color,
   });
@@ -119,8 +123,9 @@ class _StatsCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _StatItem(label: 'Reviewed', value: reviewed.toString()),
+                _StatItem(label: 'Liked', value: liked.toString()),
                 _StatItem(label: 'Deleted', value: deleted.toString()),
-                _StatItem(label: 'Space Freed', value: space),
+                _StatItem(label: 'Saved', value: space),
               ],
             ),
           ],

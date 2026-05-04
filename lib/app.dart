@@ -46,8 +46,8 @@ class MainShell extends ConsumerWidget {
         children: [
           _buildPage(currentTab),
           
-          // Only show top bar if not in Reels tab (which is full-screen)
-          if (currentTab != NavTab.reels)
+          // Only show top bar for screens that don't have their own specific AppBars
+          if (currentTab == NavTab.home || currentTab == NavTab.swipe)
             Positioned(
               top: 0,
               left: 0,

@@ -268,13 +268,32 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
   Future<void> toggleLike({bool forceLike = false}) async {
     LogService.instance.verbose('toggleLike called for ${widget.asset.id} (forceLike: $forceLike)');
     HapticHelper.medium();
-    if (forceLike && _isLiked) return; // Already liked
 
     final newStatus = forceLike ? true : !_isLiked;
+    
+    // If we're forcing a like and it's already liked, we still want to ensure it's in the DB
+    if (forceLike && _isLiked) {
+      await DatabaseService.instance.tagPhoto(widget.asset.id, '2');
+      ref.invalidate(favoriteAssetListProvider);
+      return;
+    }
+
     setState(() => _isLiked = newStatus);
 
     if (newStatus) {
       await DatabaseService.instance.tagPhoto(widget.asset.id, '2');
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Added to Favorites ❤️'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            width: 200,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
       if (Platform.isAndroid) {
         try {
           await PhotoManager.editor.android.favoriteAsset(entity: widget.asset, favorite: true);
@@ -285,6 +304,18 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
       }
     } else {
       await DatabaseService.instance.untagPhoto(widget.asset.id, '2');
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Removed from Favorites'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            width: 200,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
       if (Platform.isAndroid) {
         try {
           await PhotoManager.editor.android.favoriteAsset(entity: widget.asset, favorite: false);
@@ -296,6 +327,11 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
     }
     // Refresh favorites list if active
     ref.invalidate(favoriteAssetListProvider);
+    
+    // Update Stats
+    if (newStatus) {
+      DatabaseService.instance.updateStats(liked: 1, reviewed: 1);
+    }
   }
 
   @override

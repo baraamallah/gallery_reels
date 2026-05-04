@@ -7,14 +7,9 @@ part 'folders_provider.g.dart';
 @riverpod
 Future<List<AssetEntity>> taggedPhotos(Ref ref, String tagId) async {
   final photoIds = await DatabaseService.instance.getPhotosByTag(tagId);
-  final List<AssetEntity> assets = [];
   
-  for (final id in photoIds) {
-    final asset = await AssetEntity.fromId(id);
-    if (asset != null) {
-      assets.add(asset);
-    }
-  }
+  final assetFutures = photoIds.map((id) => AssetEntity.fromId(id));
+  final results = await Future.wait(assetFutures);
   
-  return assets;
+  return results.whereType<AssetEntity>().toList();
 }

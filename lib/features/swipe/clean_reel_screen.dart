@@ -26,7 +26,7 @@ class CleanReelScreen extends ConsumerStatefulWidget {
 }
 
 class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
-  final PageController _pageController = PageController();
+  late PageController _pageController;
   final Set<AssetEntity> _sessionDeleted = {};
   late ConfettiController _confettiController;
   int _index = 0;
@@ -37,6 +37,8 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
   @override
   void initState() {
     super.initState();
+    _index = ref.read(swipeIndexProvider);
+    _pageController = PageController(initialPage: _index);
     _confettiController = ConfettiController(duration: const Duration(seconds: 1));
   }
 
@@ -49,11 +51,50 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
 
   Future<bool> _onWillPop() async {
     if (_isProcessingBatch) return false;
+    
+    // If no pending system deletions, just exit
     if (_sessionDeleted.isEmpty || widget.deleteMode == DeleteMode.inAppTrash) {
-      LogService.instance.info('Exiting session: No pending system deletions.');
       return true;
     }
 
+    // Ask user if they want to discard or commit pending deletions
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pending Deletions'),
+        content: Text('You have ${_sessionDeleted.length} items in your session trash. Do you want to commit them to the system bin before leaving?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'discard'), 
+            child: const Text('Discard', style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'), 
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'commit'), 
+            child: const Text('Commit & Exit'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == 'commit') {
+      await _commitBatch();
+      return true;
+    } else if (result == 'discard') {
+      // Clear session so they aren't deleted
+      _sessionDeleted.clear();
+      return true;
+    }
+    
+    return false;
+  }
+
+  Future<void> _commitBatch() async {
+    if (_sessionDeleted.isEmpty) return;
+    
     setState(() => _isProcessingBatch = true);
     final pendingCount = _sessionDeleted.length;
     LogService.instance.info('Committing batch delete for $pendingCount items...');
@@ -65,46 +106,25 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
       List<String> successfullyDeletedIds = [];
 
       if (widget.deleteMode == DeleteMode.systemTrash && Platform.isAndroid) {
-        LogService.instance.verbose('Calling Android moveToTrash for $pendingCount items...');
         successfullyDeletedIds = await PhotoManager.editor.android.moveToTrash(assets);
-        LogService.instance.info('Android moveToTrash Result: ${successfullyDeletedIds.length} / $pendingCount items successfully moved.');
       } else if (widget.deleteMode == DeleteMode.permanent) {
-        LogService.instance.verbose('Calling deleteWithIds (Permanent) for $pendingCount items...');
         successfullyDeletedIds = await PhotoManager.editor.deleteWithIds(ids);
-        LogService.instance.info('Permanent Delete Result: ${successfullyDeletedIds.length} / $pendingCount items successfully removed.');
       }
       
       if (successfullyDeletedIds.isNotEmpty) {
         final successSet = successfullyDeletedIds.toSet();
-        LogService.instance.verbose('Synchronizing internal database for successful deletions...');
-        
         for (final id in successfullyDeletedIds) {
           await DatabaseService.instance.removeFromTrash(id);
         }
-        
-        await DatabaseService.instance.updateStats(
-          reviewed: successfullyDeletedIds.length, 
-          deleted: successfullyDeletedIds.length
-        );
-        
-        // Remove successfully deleted from the session set
         _sessionDeleted.removeWhere((a) => successSet.contains(a.id));
-      }
-
-      if (_sessionDeleted.isNotEmpty) {
-        LogService.instance.warn('${_sessionDeleted.length} items remain in In-App Trash because system action was cancelled or failed.');
-      } else {
-        LogService.instance.info('Batch deletion complete. All items processed.');
       }
 
       await _checkCleanFreakBadge();
     } catch (e, s) {
-      LogService.instance.error('CRITICAL ERROR in batch delete: $e', e, s);
+      LogService.instance.error('Error in batch delete: $e', e, s);
     } finally {
       if (mounted) setState(() => _isProcessingBatch = false);
     }
-    
-    return true;
   }
 
   @override
@@ -113,13 +133,11 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return PopScope(
-      canPop: false, // Always handle pop manually to ensure batch commit
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        
         final navigator = Navigator.of(context);
         final shouldPop = await _onWillPop();
-        
         if (shouldPop && navigator.context.mounted) {
           navigator.pop();
         }
@@ -155,7 +173,10 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
                       controller: _pageController,
                       scrollDirection: Axis.vertical,
                       physics: const NeverScrollableScrollPhysics(),
-                      onPageChanged: (i) => setState(() => _index = i),
+                      onPageChanged: (i) {
+                        setState(() => _index = i);
+                        ref.read(swipeIndexProvider.notifier).jumpTo(i);
+                      },
                       itemCount: assets.length,
                       itemBuilder: (context, i) {
                         final asset = assets[i];
@@ -168,25 +189,49 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
                         );
                       },
                     ),
+                    
+                    // Top Bar
                     Positioned(
                       top: MediaQuery.of(context).padding.top + 12,
                       left: 12,
-                      child: IconButton(
-                        onPressed: () => Navigator.maybePop(context),
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      ).animate().fadeIn(duration: 400.ms),
+                      right: 12,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.maybePop(context),
+                            icon: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: const Icon(Icons.close, color: Colors.white, size: 20),
+                            ),
+                          ),
+                          _IndexPill(current: _index + 1, total: assets.length),
+                          
+                          // Commit Action Button (Intentional Finish)
+                          if (_sessionDeleted.isNotEmpty)
+                            _CommitActionButton(
+                              count: _sessionDeleted.length,
+                              onPressed: _commitBatch,
+                            ).animate().scale().fadeIn()
+                          else
+                            const SizedBox(width: 48),
+                        ],
+                      ),
                     ),
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 16,
-                      right: 16,
-                      child: _IndexPill(current: _index + 1, total: assets.length),
-                    ).animate().fadeIn(duration: 400.ms),
+
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
                       child: _BottomHint(deleteMode: widget.deleteMode),
                     ),
+                    
+                    // ... (rest of stack remains)
                     Positioned(
                       top: 0,
                       left: 0,
@@ -230,43 +275,35 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
   }
 
   void _keep(AssetEntity asset) {
-    LogService.instance.verbose('Keeping asset: ${asset.id}');
     HapticHelper.light();
     _handleDecision();
-    _pageController.nextPage(duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+    
+    // Update Analytics: Reviewed +1
+    DatabaseService.instance.updateStats(reviewed: 1);
+
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 450), 
+      curve: Curves.easeOutQuart,
+    );
   }
 
   void _queueDelete(AssetEntity asset) async {
-    LogService.instance.verbose('Queueing asset for delete: ${asset.id} (${asset.title})');
     HapticHelper.medium();
     _handleDecision();
 
     // 1. Mark in In-app trash immediately for logical delete (seamless feel)
     await _addToInAppTrash(asset);
     
+    // Update Analytics: Reviewed +1, Deleted +1 (Space is already updated in _addToInAppTrash)
+    DatabaseService.instance.updateStats(reviewed: 1, deleted: 1);
+
     // 2. Add to session batch for official system delete on exit
     _sessionDeleted.add(asset);
 
-    // 3. Move to next immediately
-    _pageController.nextPage(duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
-
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text('Moved to trash'),
-        action: SnackBarAction(
-          label: 'UNDO',
-          onPressed: () async {
-            LogService.instance.verbose('UNDO delete for asset: ${asset.id}');
-            _sessionDeleted.remove(asset);
-            await DatabaseService.instance.removeFromTrash(asset.id);
-            // We don't scroll back, but it's removed from the "to be deleted" list
-            HapticHelper.light();
-          },
-        ),
-      ),
+    // 3. Move to next with smooth transition
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 450), 
+      curve: Curves.easeOutQuart,
     );
   }
 
@@ -308,20 +345,51 @@ class _CleanReelScreenState extends ConsumerState<CleanReelScreen> {
     LogService.instance.verbose('Toggling favorite for asset: ${asset.id}');
     HapticHelper.light();
     final tags = await DatabaseService.instance.getPhotoTags(asset.id);
-    final isFav = tags.contains('2');
-    if (isFav) {
+    final isFavInDB = tags.contains('2');
+    final isSystemFav = asset.isFavorite;
+    final isCurrentlyLiked = isFavInDB || isSystemFav;
+
+    if (isCurrentlyLiked) {
+      // Remove favorite
       await DatabaseService.instance.untagPhoto(asset.id, '2');
+      if (Platform.isAndroid) {
+        try {
+          await PhotoManager.editor.android.favoriteAsset(entity: asset, favorite: false);
+        } catch (e) {
+          LogService.instance.warn('Failed system unfavorite: $e');
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Removed from Favorites'), duration: Duration(seconds: 1)),
+        );
+      }
     } else {
+      // Add favorite
       await DatabaseService.instance.tagPhoto(asset.id, '2');
+      if (Platform.isAndroid) {
+        try {
+          await PhotoManager.editor.android.favoriteAsset(entity: asset, favorite: true);
+        } catch (e) {
+          LogService.instance.warn('Failed system favorite: $e');
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Added to Favorites ❤️'), duration: Duration(seconds: 1)),
+        );
+      }
     }
 
-    if (Platform.isAndroid) {
-      try {
-        await PhotoManager.editor.android.favoriteAsset(entity: asset, favorite: !isFav);
-        LogService.instance.info('System favorite status updated for ${asset.id}');
-      } catch (e) {
-        LogService.instance.warn('Failed to update system favorite status: $e');
-      }
+    
+    // Invalidate the favorites provider so the UI updates immediately
+    ref.invalidate(favoriteAssetListProvider);
+
+    // Update Stats
+    if (!isCurrentlyLiked) {
+      DatabaseService.instance.updateStats(liked: 1);
     }
   }
 }
@@ -347,13 +415,36 @@ class _ReelItem extends StatefulWidget {
 class _ReelItemState extends State<_ReelItem> {
   double _dx = 0;
   bool _showInfo = false;
+  bool _showHeartAnim = false;
+  bool? _isLocalFav;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkFavStatus();
+  }
+
+  Future<void> _checkFavStatus() async {
+    final tags = await DatabaseService.instance.getPhotoTags(widget.asset.id);
+    if (mounted) setState(() => _isLocalFav = tags.contains('2'));
+  }
+
+  void _onDoubleTap() {
+    setState(() {
+      _showHeartAnim = true;
+      _isLocalFav = !(_isLocalFav ?? false);
+    });
+    widget.onDoubleTap();
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) setState(() => _showHeartAnim = false);
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onDoubleTap: widget.onDoubleTap,
+      onDoubleTap: _onDoubleTap,
       onHorizontalDragUpdate: (d) => setState(() => _dx += d.delta.dx),
       onHorizontalDragEnd: (d) {
         final vx = d.primaryVelocity ?? 0;
@@ -404,6 +495,17 @@ class _ReelItemState extends State<_ReelItem> {
               ),
             ),
           ),
+
+          // Favorite Indicator (Corner)
+          if (_isLocalFav == true)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 80,
+              right: 20,
+              child: const Icon(Icons.favorite, color: Colors.red, size: 28)
+                  .animate()
+                  .scale(duration: 400.ms, curve: Curves.elasticOut)
+                  .shimmer(delay: 2.seconds, duration: 1.seconds),
+            ),
 
           // Info Button (I Logo)
           Positioned(
@@ -487,6 +589,19 @@ class _ReelItemState extends State<_ReelItem> {
                   ),
                 ),
               ).animate().scale(duration: 100.ms),
+            ),
+
+          // Big Heart Animation
+          if (_showHeartAnim)
+            Center(
+              child: Icon(
+                _isLocalFav == true ? Icons.favorite : Icons.favorite_border,
+                color: Colors.white.withValues(alpha: 0.8),
+                size: 120,
+              ).animate().scale(
+                duration: 400.ms,
+                curve: Curves.elasticOut,
+              ).fadeOut(delay: 500.ms, duration: 300.ms),
             ),
         ],
       ),
@@ -610,6 +725,85 @@ class _CleanFreakBadgeDialog extends StatefulWidget {
 
   @override
   State<_CleanFreakBadgeDialog> createState() => _CleanFreakBadgeDialogState();
+}
+
+class _CommitActionButton extends StatelessWidget {
+  final int count;
+  final VoidCallback onPressed;
+
+  const _CommitActionButton({required this.count, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return _AnimatedScaleButton(
+      onTap: () async {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Commit Deletions?'),
+            content: Text('Move $count items to the system bin permanently?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Commit')),
+            ],
+          ),
+        );
+        if (ok == true) onPressed();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: cs.error,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(color: cs.error.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.delete_sweep, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'FINISH ($count)',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedScaleButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _AnimatedScaleButton({required this.child, required this.onTap});
+
+  @override
+  State<_AnimatedScaleButton> createState() => _AnimatedScaleButtonState();
+}
+
+class _AnimatedScaleButtonState extends State<_AnimatedScaleButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOutCubic,
+        child: widget.child,
+      ),
+    );
+  }
 }
 
 class _CleanFreakBadgeDialogState extends State<_CleanFreakBadgeDialog>

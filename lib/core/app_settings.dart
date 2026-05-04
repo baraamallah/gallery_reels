@@ -43,6 +43,9 @@ class AppSettings {
   final int? maxSizeReels; // in bytes — new
   final DateTime? reelsStartDate; // new
   final DateTime? reelsEndDate;   // new
+  final bool enableLibrary;      // new
+  final int loadLimit;           // new
+  final int lastSwipeIndex;      // new
 
   const AppSettings({
     required this.themeMode,
@@ -58,6 +61,9 @@ class AppSettings {
     this.maxSizeReels,
     this.reelsStartDate,
     this.reelsEndDate,
+    this.enableLibrary = true,
+    this.loadLimit = 1000,
+    this.lastSwipeIndex = 0,
   });
 
   factory AppSettings.defaults() => const AppSettings(
@@ -74,6 +80,9 @@ class AppSettings {
         maxSizeReels: null,
         reelsStartDate: null,
         reelsEndDate: null,
+        enableLibrary: true,
+        loadLimit: 1000,
+        lastSwipeIndex: 0,
       );
 
   AppSettings copyWith({
@@ -90,6 +99,9 @@ class AppSettings {
     Object? maxSizeReels = _sentinel,
     Object? reelsStartDate = _sentinel,
     Object? reelsEndDate = _sentinel,
+    bool? enableLibrary,
+    int? loadLimit,
+    int? lastSwipeIndex,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -105,6 +117,9 @@ class AppSettings {
       maxSizeReels: maxSizeReels == _sentinel ? this.maxSizeReels : maxSizeReels as int?,
       reelsStartDate: reelsStartDate == _sentinel ? this.reelsStartDate : reelsStartDate as DateTime?,
       reelsEndDate: reelsEndDate == _sentinel ? this.reelsEndDate : reelsEndDate as DateTime?,
+      enableLibrary: enableLibrary ?? this.enableLibrary,
+      loadLimit: loadLimit ?? this.loadLimit,
+      lastSwipeIndex: lastSwipeIndex ?? this.lastSwipeIndex,
     );
   }
 
@@ -123,6 +138,9 @@ class AppSettings {
       'maxSizeReels': maxSizeReels,
       'reelsStartDate': reelsStartDate?.millisecondsSinceEpoch,
       'reelsEndDate': reelsEndDate?.millisecondsSinceEpoch,
+      'enableLibrary': enableLibrary,
+      'loadLimit': loadLimit,
+      'lastSwipeIndex': lastSwipeIndex,
     };
   }
 
@@ -179,6 +197,9 @@ class AppSettings {
       maxSizeReels: map['maxSizeReels'] as int?,
       reelsStartDate: parseDate(map['reelsStartDate']),
       reelsEndDate: parseDate(map['reelsEndDate']),
+      enableLibrary: map['enableLibrary'] as bool? ?? true,
+      loadLimit: map['loadLimit'] as int? ?? 1000,
+      lastSwipeIndex: map['lastSwipeIndex'] as int? ?? 0,
     );
   }
 }
@@ -289,6 +310,21 @@ class AppSettingsController extends Notifier<AppSettings> {
 
   Future<void> setReelsIncludedAlbums(List<String> ids) async {
     state = state.copyWith(reelsIncludedAlbumIds: ids);
+    await _persist();
+  }
+
+  Future<void> setEnableLibrary(bool enabled) async {
+    state = state.copyWith(enableLibrary: enabled);
+    await _persist();
+  }
+
+  Future<void> setLoadLimit(int limit) async {
+    state = state.copyWith(loadLimit: limit);
+    await _persist();
+  }
+
+  Future<void> setLastSwipeIndex(int index) async {
+    state = state.copyWith(lastSwipeIndex: index);
     await _persist();
   }
 }

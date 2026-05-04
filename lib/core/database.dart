@@ -19,8 +19,13 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE daily_stats ADD COLUMN liked INTEGER DEFAULT 0');
+        }
+      },
     );
   }
 
@@ -58,6 +63,7 @@ class DatabaseService {
         date TEXT PRIMARY KEY,
         reviewed INTEGER DEFAULT 0,
         deleted INTEGER DEFAULT 0,
+        liked INTEGER DEFAULT 0,
         space_freed INTEGER DEFAULT 0
       )
     ''');
@@ -124,49 +130,50 @@ class DatabaseService {
     if (result.isNotEmpty) return result.first;
     
     // Create new stats entry for today
-    final newStats = {'date': date, 'reviewed': 0, 'deleted': 0, 'space_freed': 0};
+    final newStats = {'date': date, 'reviewed': 0, 'deleted': 0, 'liked': 0, 'space_freed': 0};
     await db.insert('daily_stats', newStats);
     return newStats;
   }
 
   Future<Map<String, dynamic>> getLifetimeStats() async {
     final db = await instance.database;
-    final result = await db.rawQuery('SELECT SUM(reviewed) as reviewed, SUM(deleted) as deleted, SUM(space_freed) as space_freed FROM daily_stats');
+    final result = await db.rawQuery('SELECT SUM(reviewed) as reviewed, SUM(deleted) as deleted, SUM(liked) as liked, SUM(space_freed) as space_freed FROM daily_stats');
     if (result.isNotEmpty && result.first['reviewed'] != null) {
       return result.first;
     }
-    return {'reviewed': 0, 'deleted': 0, 'space_freed': 0};
+    return {'reviewed': 0, 'deleted': 0, 'liked': 0, 'space_freed': 0};
   }
 
-  Future<void> updateStats({int? reviewed, int? deleted, int? spaceFreed}) async {
+  Future<void> updateStats({int? reviewed, int? deleted, int? liked, int? spaceFreed}) async {
     final db = await instance.database;
     final date = DateTime.now().toIso8601String().split('T')[0];
     
-    final stats = await getTodayStats();
-    await db.update(
-      'daily_stats',
-      {
-        'reviewed': (stats['reviewed'] as int) + (reviewed ?? 0),
-        'deleted': (stats['deleted'] as int) + (deleted ?? 0),
-        'space_freed': (stats['space_freed'] as int) + (spaceFreed ?? 0),
-      },
-      where: 'date = ?',
-      whereArgs: [date],
+    // Ensure entry exists
+    await getTodayStats();
+
+    await db.rawUpdate(
+      'UPDATE daily_stats SET reviewed = reviewed + ?, deleted = deleted + ?, liked = liked + ?, space_freed = space_freed + ? WHERE date = ?',
+      [reviewed ?? 0, deleted ?? 0, liked ?? 0, spaceFreed ?? 0, date],
     );
   }
 
   // Tag management
   Future<void> tagPhoto(String photoId, String tagId) async {
-    final db = await instance.database;
-    await db.insert(
-      'photo_tags',
-      {
-        'photo_id': photoId,
-        'tag_id': tagId,
-        'tagged_at': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    try {
+      final db = await instance.database;
+      final result = await db.insert(
+        'photo_tags',
+        {
+          'photo_id': photoId,
+          'tag_id': tagId,
+          'tagged_at': DateTime.now().millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      print('DB: Tagged photo $photoId with tag $tagId (row: $result)');
+    } catch (e) {
+      print('DB ERROR: Failed to tag photo $photoId: $e');
+    }
   }
 
   Future<void> untagPhoto(String photoId, String tagId) async {
@@ -195,8 +202,11 @@ class DatabaseService {
       'photo_tags',
       columns: ['photo_id'],
       where: 'tag_id = ?',
+      whereArgs: [tagId],
       orderBy: 'tagged_at DESC',
     );
-    return result.map((r) => r['photo_id'] as String).toList();
+    final ids = result.map((r) => r['photo_id'] as String).toList();
+    print('DB: Found ${ids.length} photos for tag $tagId: $ids');
+    return ids;
   }
 }

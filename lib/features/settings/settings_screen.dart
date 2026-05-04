@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/app_settings.dart';
 import '../../core/theme.dart';
+import '../../core/constants.dart';
 import '../swipe/swipe_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -70,6 +71,62 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const SizedBox(height: 24),
+          _SectionHeader(title: 'Memory & Performance', icon: PhosphorIcons.cpu()),
+          _SettingsCard(
+            children: [
+              _SettingTile(
+                title: 'Library Mode',
+                subtitle: settings.enableLibrary ? 'Enabled (uses more memory)' : 'Disabled (performance mode)',
+                trailing: Switch(
+                  value: settings.enableLibrary,
+                  onChanged: (v) => ref.read(appSettingsProvider.notifier).setEnableLibrary(v),
+                ),
+              ),
+              const Divider(indent: 20, endIndent: 20),
+              _SettingTile(
+                title: 'Import Limit',
+                subtitle: 'Load assets in parts for speed',
+                trailing: DropdownButton<int>(
+                  value: settings.loadLimit,
+                  underline: const SizedBox.shrink(),
+                  onChanged: (v) => v != null ? ref.read(appSettingsProvider.notifier).setLoadLimit(v) : null,
+                  items: const [
+                    DropdownMenuItem(value: 500, child: Text('500 items')),
+                    DropdownMenuItem(value: 1000, child: Text('1000 items')),
+                    DropdownMenuItem(value: 2500, child: Text('2500 items')),
+                    DropdownMenuItem(value: 5000, child: Text('5000 items')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+          _SectionHeader(title: 'Help & FAQ', icon: PhosphorIcons.question()),
+          _SettingsCard(
+            children: [
+              _SettingTile(
+                title: 'System Bin Permission',
+                subtitle: 'Why does it ask "Allow"?',
+                trailing: const Icon(Icons.info_outline, size: 20),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('System Bin Permission'),
+                      content: const Text(
+                        'Android & iOS require user permission for every deletion to protect your files.\n\n'
+                        'Tip: Use "In-App Trash" to swipe without interruptions. You can empty the trash once at the end.',
+                      ),
+                      actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Got it'))],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
           _SectionHeader(title: 'System & Permissions', icon: PhosphorIcons.shieldCheck()),
           _SettingsCard(
             children: [
@@ -87,7 +144,7 @@ class SettingsScreen extends ConsumerWidget {
             child: Opacity(
               opacity: 0.5,
               child: Text(
-                'Gallery Reels v1.0.0',
+                '${AppConstants.appName} v${AppConstants.appVersion}',
                 style: AppTheme.captionStyle(context),
               ),
             ),
